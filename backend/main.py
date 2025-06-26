@@ -6,6 +6,7 @@ from typing import List, Dict
 import json
 import asyncio
 import logging
+import os
 
 from .database import get_db, create_tables, Coin, MLPrediction, Trade, TradingStrategy
 from .bybit_client import BybitClient
@@ -189,7 +190,8 @@ async def update_strategy(symbol: str, strategy_data: Dict, db: Session = Depend
     return {"success": True, "message": "Strategy updated"}
 
 @app.post("/trading/toggle")
-async def toggle_trading(enable: bool):
+async def toggle_trading(data: Dict):
+    enable = data.get("enable", False)
     trading_engine.set_enabled(enable)
     status = "enabled" if enable else "disabled"
     return {"success": True, "message": f"Trading {status}"}
@@ -216,4 +218,5 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
