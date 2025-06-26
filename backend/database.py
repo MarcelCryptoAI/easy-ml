@@ -6,10 +6,22 @@ import os
 from .config import settings
 
 # Try to get database URL from Railway or environment
-database_url = settings.database_url or os.getenv("DATABASE_URL")
+database_url = (
+    os.getenv("DATABASE_URL") or 
+    settings.database_url or
+    os.getenv("POSTGRES_URL") or
+    os.getenv("RAILWAY_POSTGRES_URL")
+)
 
 if not database_url:
-    raise Exception("DATABASE_URL not found. Please set DATABASE_URL in Railway variables.")
+    # Log available environment variables for debugging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.error("Available environment variables:")
+    for key, value in os.environ.items():
+        if any(term in key.upper() for term in ['DATABASE', 'POSTGRES', 'DB']):
+            logger.error(f"  {key}: {value[:50]}...")
+    raise Exception("DATABASE_URL not found. Check Railway PostgreSQL connection.")
 
 engine = create_engine(database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

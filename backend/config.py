@@ -24,7 +24,12 @@ settings = Settings(
     bybit_api_secret=os.getenv("BYBIT_API_SECRET", ""),
     bybit_testnet=os.getenv("BYBIT_TESTNET", "true").lower() == "true",
     openai_api_key=os.getenv("OPENAI_API_KEY", ""),
-    database_url=os.getenv("DATABASE_URL", ""),
+    database_url=(
+        os.getenv("DATABASE_URL") or 
+        os.getenv("POSTGRES_URL") or 
+        os.getenv("RAILWAY_POSTGRES_URL") or 
+        ""
+    ),
     redis_url=os.getenv("REDIS_URL", ""),
     secret_key=os.getenv("SECRET_KEY", ""),
 )
