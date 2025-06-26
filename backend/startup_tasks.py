@@ -69,16 +69,23 @@ async def sync_initial_coins(db: Session):
 
 def validate_configuration():
     """Validate that all required configuration is present"""
+    missing = []
+    
     if not settings.bybit_api_key:
-        raise Exception("BYBIT_API_KEY is required but not set")
+        missing.append("BYBIT_API_KEY")
     
     if not settings.bybit_api_secret:
-        raise Exception("BYBIT_API_SECRET is required but not set")
+        missing.append("BYBIT_API_SECRET")
         
     if not settings.openai_api_key:
-        raise Exception("OPENAI_API_KEY is required but not set")
+        missing.append("OPENAI_API_KEY")
     
     if not settings.database_url:
-        raise Exception("DATABASE_URL is required but not set")
+        missing.append("DATABASE_URL")
+    
+    if missing:
+        logger.error(f"Missing required environment variables: {', '.join(missing)}")
+        logger.error("Please set these variables in Railway dashboard")
+        raise Exception(f"Missing required environment variables: {', '.join(missing)}")
     
     logger.info("Configuration validation passed - all required keys present")
