@@ -189,15 +189,21 @@ class TradingEngine:
             logger.error(f"Error executing trade for {symbol}: {e}")
     
     def _get_available_balance(self) -> float:
-        """Get available USDT balance from Bybit"""
+        """Get available USDT balance from Bybit Unified Trading Account (UTA)"""
         try:
             response = self.bybit_client.session.get_wallet_balance(
                 accountType="UNIFIED",
                 coin="USDT"
             )
             if response["retCode"] == 0:
-                balance_info = response["result"]["list"][0]["coin"][0]
-                return float(balance_info["availableToWithdraw"])
+                # Get the first account list (should be UTA)
+                account_list = response["result"]["list"][0]
+                # Find USDT coin in the account
+                for coin_info in account_list["coin"]:
+                    if coin_info["coin"] == "USDT":
+                        # Use availableBalance for UTA trading
+                        return float(coin_info["availableBalance"])
+                return 0.0
             return 0.0
         except Exception as e:
             logger.error(f"Error getting balance: {e}")
