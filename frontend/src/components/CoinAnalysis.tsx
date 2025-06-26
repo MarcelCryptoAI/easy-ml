@@ -18,7 +18,8 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  Alert
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { tradingApi } from '../utils/api';

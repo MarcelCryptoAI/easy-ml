@@ -69,7 +69,7 @@ export const Dashboard: React.FC = () => {
     });
 
     subscribe('prediction_update', () => {
-      toast.info('New ML predictions available');
+      toast('New ML predictions available');
     });
 
     return () => {

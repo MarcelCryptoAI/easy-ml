@@ -321,9 +321,9 @@ export const StrategyConfigurator: React.FC = () => {
                 <Button
                   variant="contained"
                   onClick={handleSaveStrategy}
-                  disabled={updateStrategyMutation.isLoading}
+                  disabled={updateStrategyMutation.isPending}
                 >
-                  {updateStrategyMutation.isLoading ? <CircularProgress size={20} /> : 'Save Strategy'}
+                  {updateStrategyMutation.isPending ? <CircularProgress size={20} /> : 'Save Strategy'}
                 </Button>
 
                 <Button
