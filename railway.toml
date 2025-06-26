@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "python backend/start.py"
+startCommand = "cd /app && python -c \"import os; import uvicorn; uvicorn.run('backend.main:app', host='0.0.0.0', port=int(os.environ.get('PORT', 8000)))\""
 
 [[services]]
 name = "backend"
