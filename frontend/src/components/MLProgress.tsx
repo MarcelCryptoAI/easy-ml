@@ -51,7 +51,7 @@ export const MLProgress: React.FC = () => {
             coin_symbol: coin.symbol,
             last_trained: predictions[0]?.created_at || null,
             models_trained: predictions.map(p => p.model_type),
-            training_status: predictions.length === 4 ? 'complete' : 'training',
+            training_status: predictions.length === 10 ? 'complete' : 'training',
             accuracy_scores: predictions.reduce((acc, p) => {
               acc[p.model_type] = p.confidence;
               return acc;
@@ -106,6 +106,12 @@ export const MLProgress: React.FC = () => {
       case 'random_forest': return 'secondary';
       case 'svm': return 'info';
       case 'neural_network': return 'success';
+      case 'xgboost': return 'warning';
+      case 'lightgbm': return 'error';
+      case 'catboost': return 'primary';
+      case 'transformer': return 'secondary';
+      case 'gru': return 'info';
+      case 'cnn_1d': return 'success';
       default: return 'default';
     }
   };
@@ -245,7 +251,7 @@ export const MLProgress: React.FC = () => {
                       
                       <TableCell>
                         <Box display="flex" gap={0.5} flexWrap="wrap">
-                          {['lstm', 'random_forest', 'svm', 'neural_network'].map((modelType) => {
+                          {['lstm', 'random_forest', 'svm', 'neural_network', 'xgboost', 'lightgbm', 'catboost', 'transformer', 'gru', 'cnn_1d'].map((modelType) => {
                             const isTrained = status.models_trained.includes(modelType);
                             return (
                               <Chip
@@ -263,7 +269,7 @@ export const MLProgress: React.FC = () => {
                           })}
                         </Box>
                         <Typography variant="caption" color="textSecondary">
-                          {status.models_trained.length}/4 trained
+                          {status.models_trained.length}/10 trained
                         </Typography>
                       </TableCell>
                       

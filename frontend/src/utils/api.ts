@@ -54,6 +54,16 @@ export const tradingApi = {
 
   batchOptimize: (): Promise<any> =>
     api.post('/optimize/batch').then(res => res.data),
+
+  // AI Recommendations
+  getRecommendation: (symbol: string): Promise<any> =>
+    api.get(`/recommendations/${symbol}`).then(res => res.data),
+
+  getTradingSignals: (): Promise<any> =>
+    api.get('/trading-signals').then(res => res.data),
+
+  optimizeAllStrategies: (): Promise<any> =>
+    api.post('/optimize-all-strategies').then(res => res.data),
 };
 
 export default api;

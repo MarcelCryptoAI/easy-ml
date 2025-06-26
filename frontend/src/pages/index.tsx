@@ -14,6 +14,7 @@ import { MLProgress } from '../components/MLProgress';
 import { StrategyConfigurator } from '../components/StrategyConfigurator';
 import { TrainingStatus } from '../components/TrainingStatus';
 import { StrategyOptimizer } from '../components/StrategyOptimizer';
+import { CompactTradingDashboard } from '../components/CompactTradingDashboard';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -57,17 +58,17 @@ export default function Home() {
       <Container maxWidth={false} disableGutters>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="main navigation">
-            <Tab label="Dashboard" />
-            <Tab label="ML Progress" />
-            <Tab label="Training Status" />
-            <Tab label="Strategy Config" />
-            <Tab label="Strategy Optimizer" />
-            <Tab label="Coin Analysis" />
+            <Tab label="🚀 Trading Dashboard" />
+            <Tab label="📊 ML Progress" />
+            <Tab label="🔧 Training Status" />
+            <Tab label="⚙️ Strategy Config" />
+            <Tab label="🤖 AI Optimizer" />
+            <Tab label="📈 Coin Analysis" />
           </Tabs>
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Dashboard />
+          <CompactTradingDashboard />
         </TabPanel>
         
         <TabPanel value={tabValue} index={1}>
