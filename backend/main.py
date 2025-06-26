@@ -211,12 +211,14 @@ async def ml_training_task():
                         MLPrediction.model_type == model_type
                     ).order_by(MLPrediction.created_at.desc()).first()
                     
-                    # Skip if trained recently (within last hour)
+                    # Only skip if prediction exists AND is recent (within last 10 minutes)
                     if recent_prediction:
                         from datetime import datetime, timedelta
-                        if recent_prediction.created_at > datetime.utcnow() - timedelta(hours=1):
-                            logger.info(f"Skipping {current_coin.symbol} {model_type} - recently trained")
+                        if recent_prediction.created_at > datetime.utcnow() - timedelta(minutes=10):
+                            logger.info(f"⏭️  Skipping {current_coin.symbol} {model_type} - recently trained ({recent_prediction.created_at})")
                             continue
+                    else:
+                        logger.info(f"🆕 No existing prediction for {current_coin.symbol} {model_type} - will train")
                     
                     logger.info(f"Training {model_type} for {current_coin.symbol}")
                     
