@@ -16,6 +16,7 @@ from .websocket_manager import WebSocketManager
 from .openai_optimizer import OpenAIOptimizer
 from .startup_tasks import initialize_database, validate_configuration
 from .backtest_engine import BacktestEngine
+from .ai_trading_advisor import AITradingAdvisor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ bybit_client = BybitClient()
 trading_engine = TradingEngine(bybit_client, websocket_manager)
 openai_optimizer = OpenAIOptimizer()
 backtest_engine = BacktestEngine()
+ai_advisor = AITradingAdvisor()
 
 @app.on_event("startup")
 async def startup_event():
@@ -172,6 +174,59 @@ async def ml_training_task():
 @app.get("/")
 async def root():
     return {"message": "Crypto Trading ML Platform API", "status": "operational"}
+
+@app.get("/recommendations/{symbol}")
+async def get_trading_recommendation(symbol: str, db: Session = Depends(get_db)):
+    """Get AI-powered autonomous trading recommendation for a coin"""
+    try:
+        recommendation = ai_advisor.get_autonomous_recommendation(db, symbol)
+        return recommendation
+    except Exception as e:
+        logger.error(f"Error getting recommendation for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/trading-signals")
+async def get_autonomous_signals(db: Session = Depends(get_db)):
+    """Get high-confidence autonomous trading signals for all coins"""
+    try:
+        signals = ai_advisor.get_autonomous_trading_signals(db)
+        return {"signals": signals, "count": len(signals)}
+    except Exception as e:
+        logger.error(f"Error getting trading signals: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/optimize-strategy/{symbol}")
+async def optimize_coin_strategy(symbol: str, db: Session = Depends(get_db)):
+    """AI-optimize trading strategy for specific coin with backtesting"""
+    try:
+        result = ai_advisor.optimize_strategy_with_backtest(db, symbol)
+        return result
+    except Exception as e:
+        logger.error(f"Error optimizing strategy for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/optimize-all-strategies")
+async def optimize_all_strategies(db: Session = Depends(get_db)):
+    """AI-optimize strategies for all active coins"""
+    try:
+        coins = db.query(Coin).filter(Coin.is_active == True).limit(50).all()  # Batch process
+        results = []
+        
+        for coin in coins:
+            result = ai_advisor.optimize_strategy_with_backtest(db, coin.symbol)
+            results.append({
+                "coin_symbol": coin.symbol,
+                "optimization_result": result
+            })
+        
+        return {
+            "success": True,
+            "optimized_count": len(results),
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Error in batch optimization: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 async def health_check(db: Session = Depends(get_db)):
