@@ -68,12 +68,19 @@ class BybitClient:
     def place_order(self, symbol: str, side: str, qty: float, leverage: int, 
                    take_profit: Optional[float] = None, stop_loss: Optional[float] = None) -> Dict:
         try:
-            self.session.set_leverage(
-                category="linear",
-                symbol=symbol,
-                buyLeverage=str(leverage),
-                sellLeverage=str(leverage)
-            )
+            # Try to set leverage but ignore if already set
+            try:
+                self.session.set_leverage(
+                    category="linear",
+                    symbol=symbol,
+                    buyLeverage=str(leverage),
+                    sellLeverage=str(leverage)
+                )
+            except Exception as leverage_error:
+                # Ignore leverage errors (usually means it's already set)
+                if "110043" not in str(leverage_error):
+                    logger.warning(f"Leverage setting warning for {symbol}: {leverage_error}")
+                pass
             
             order_params = {
                 "category": "linear",
@@ -108,7 +115,8 @@ class BybitClient:
     def get_positions(self) -> List[Dict]:
         try:
             response = self.session.get_positions(
-                category="linear"
+                category="linear",
+                settleCoin="USDT"
             )
             
             if response["retCode"] == 0:

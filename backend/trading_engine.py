@@ -201,8 +201,9 @@ class TradingEngine:
                 # Find USDT coin in the account
                 for coin_info in account_list["coin"]:
                     if coin_info["coin"] == "USDT":
-                        # Use availableBalance for UTA trading
-                        return float(coin_info["availableBalance"])
+                        # Use availableBalance for UTA trading (with fallback)
+                        balance = coin_info.get("availableBalance") or coin_info.get("availableToWithdraw") or coin_info.get("walletBalance") or "0"
+                        return float(balance)
                 return 0.0
             return 0.0
         except Exception as e:
