@@ -205,16 +205,22 @@ async def get_coins(db: Session = Depends(get_db)):
 
 @app.get("/predictions/{symbol}")
 async def get_predictions(symbol: str, db: Session = Depends(get_db)):
-    predictions = db.query(MLPrediction).filter(
-        MLPrediction.coin_symbol == symbol
-    ).order_by(MLPrediction.created_at.desc()).limit(4).all()
-    
-    return [{
-        "model_type": pred.model_type,
-        "confidence": pred.confidence,
-        "prediction": pred.prediction,
-        "created_at": pred.created_at
-    } for pred in predictions]
+    try:
+        predictions = db.query(MLPrediction).filter(
+            MLPrediction.coin_symbol == symbol
+        ).order_by(MLPrediction.created_at.desc()).limit(4).all()
+        
+        return [{
+            "model_type": pred.model_type,
+            "confidence": pred.confidence,
+            "prediction": pred.prediction,
+            "created_at": pred.created_at
+        } for pred in predictions]
+    except Exception as e:
+        logger.error(f"Error getting predictions for {symbol}: {e}")
+        return []
+    finally:
+        db.close()
 
 @app.get("/trades", response_model=List[Dict])
 async def get_trades(status: str = None, db: Session = Depends(get_db)):

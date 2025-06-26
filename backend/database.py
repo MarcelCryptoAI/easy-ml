@@ -23,7 +23,15 @@ if not database_url:
             logger.error(f"  {key}: {value[:50]}...")
     raise Exception("DATABASE_URL not found. Check Railway PostgreSQL connection.")
 
-engine = create_engine(database_url)
+engine = create_engine(
+    database_url,
+    echo=False,
+    pool_size=20,
+    max_overflow=30,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    pool_timeout=60
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
