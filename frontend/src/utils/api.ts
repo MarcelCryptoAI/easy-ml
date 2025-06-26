@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Coin, Trade, Position, TradingStrategy, MLPrediction } from '../types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

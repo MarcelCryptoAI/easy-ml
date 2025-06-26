@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { WebSocketMessage } from '../types';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://easy-ml-production.up.railway.app';
 
 export const useWebSocket = () => {
   const [socket, setSocket] = useState<Socket | null>(null);

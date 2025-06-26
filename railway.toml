@@ -9,6 +9,12 @@ name = "backend"
 source = "."
 
 [[services]]
+name = "frontend"
+source = "./frontend"
+build.command = "npm run build"
+start.command = "npm start"
+
+[[services]]
 name = "ml-worker"
 source = "."
 startCommand = "python ml_worker/worker.py"
