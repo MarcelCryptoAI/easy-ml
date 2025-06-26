@@ -115,7 +115,7 @@ export const Dashboard: React.FC = () => {
 
   // Alleen chart als er echte data is
   const pnlChartData = closedTrades?.length > 0 
-    ? closedTrades.slice(-20).map((trade: Trade, index: number) => ({
+    ? closedTrades.slice(-50).map((trade: Trade, index: number) => ({
         index: index + 1,
         pnl: trade.pnl,
         cumulative: closedTrades.slice(0, closedTrades.indexOf(trade) + 1)

@@ -317,7 +317,7 @@ export const TrainingStatus: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {trainingQueue.slice(0, 20).map((item, index) => (
+                  {trainingQueue.map((item, index) => (
                     <TableRow key={`${item.coin_symbol}-${item.model_type}`}>
                       <TableCell>
                         <Typography variant="body2" fontWeight="bold">

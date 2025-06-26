@@ -347,7 +347,7 @@ export const StrategyOptimizer: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {optimizationQueue.slice(0, 20).map((job, index) => (
+                  {optimizationQueue.map((job, index) => (
                     <TableRow key={job.coin_symbol}>
                       <TableCell>#{job.queue_position}</TableCell>
                       <TableCell>

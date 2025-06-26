@@ -125,9 +125,25 @@ export const MLProgress: React.FC = () => {
         </IconButton>
       </Box>
 
-      {/* Overall Progress */}
+      {/* Enhanced Statistics */}
       <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={3}>
+        <Grid item xs={12} md={2}>
+          <Card>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Total Coins
+              </Typography>
+              <Typography variant="h4" color="primary">
+                {totalCoins}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Active trading pairs
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        
+        <Grid item xs={12} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
@@ -145,23 +161,23 @@ export const MLProgress: React.FC = () => {
           </Card>
         </Grid>
         
-        <Grid item xs={12} md={3}>
+        <Grid item xs={12} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
-                Completed
+                Complete (10/10)
               </Typography>
               <Typography variant="h4" color="success.main">
                 {completedCoins}
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                of {totalCoins} coins
+                All models trained
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={3}>
+        <Grid item xs={12} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
@@ -171,23 +187,39 @@ export const MLProgress: React.FC = () => {
                 {trainingCoins}
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                actively training
+                In progress
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={3}>
+        <Grid item xs={12} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
-                Pending
+                Pending (0/10)
               </Typography>
               <Typography variant="h4" color="text.secondary">
                 {pendingCoins}
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                waiting in queue
+                Not started
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={2}>
+          <Card>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Total Models
+              </Typography>
+              <Typography variant="h4" color="info.main">
+                {mlStatus.reduce((sum, coin) => sum + coin.models_trained.length, 0)}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                of {totalCoins * 10} possible
               </Typography>
             </CardContent>
           </Card>
@@ -268,9 +300,27 @@ export const MLProgress: React.FC = () => {
                             );
                           })}
                         </Box>
-                        <Typography variant="caption" color="textSecondary">
-                          {status.models_trained.length}/10 trained
-                        </Typography>
+                        <Box display="flex" alignItems="center" gap={1} mt={0.5}>
+                          <Chip
+                            label={`${status.models_trained.length}/10`}
+                            color={status.models_trained.length === 10 ? 'success' : status.models_trained.length >= 5 ? 'warning' : 'error'}
+                            size="small"
+                            variant="filled"
+                          />
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={(status.models_trained.length / 10) * 100}
+                            sx={{ 
+                              width: 60, 
+                              height: 6,
+                              borderRadius: 3
+                            }}
+                            color={status.models_trained.length === 10 ? 'success' : 'primary'}
+                          />
+                          <Typography variant="caption" color="textSecondary">
+                            {((status.models_trained.length / 10) * 100).toFixed(0)}%
+                          </Typography>
+                        </Box>
                       </TableCell>
                       
                       <TableCell>

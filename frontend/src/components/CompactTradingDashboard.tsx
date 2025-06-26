@@ -296,12 +296,24 @@ export const CompactTradingDashboard: React.FC = () => {
                   </TableCell>
                   
                   <TableCell>
-                    <Chip
-                      label={`${coin.models_trained}/10`}
-                      color={coin.models_trained === 10 ? 'success' : 'warning'}
-                      size="small"
-                      variant="outlined"
-                    />
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Chip
+                        label={`${coin.models_trained}/10`}
+                        color={coin.models_trained === 10 ? 'success' : coin.models_trained >= 5 ? 'warning' : 'error'}
+                        size="small"
+                        variant="filled"
+                      />
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={(coin.models_trained / 10) * 100}
+                        sx={{ 
+                          width: 40, 
+                          height: 4,
+                          borderRadius: 2
+                        }}
+                        color={coin.models_trained === 10 ? 'success' : 'primary'}
+                      />
+                    </Box>
                   </TableCell>
                   
                   <TableCell>
