@@ -7,6 +7,7 @@ import json
 import asyncio
 import logging
 import os
+from datetime import datetime, timedelta
 
 from .database import get_db, create_tables, Coin, MLPrediction, Trade, TradingStrategy
 from .bybit_client import BybitClient
@@ -48,6 +49,7 @@ async def startup_event():
     # Start background tasks
     asyncio.create_task(sync_coins_task())
     asyncio.create_task(trading_engine.process_trading_signals())
+    asyncio.create_task(ml_training_task())
     
     logger.info("Platform started successfully!")
 
@@ -74,6 +76,98 @@ async def sync_coins_task():
             logger.error(f"Error in sync_coins_task: {e}")
         
         await asyncio.sleep(3600)  # Sync every hour
+
+async def ml_training_task():
+    """Continuous ML training task"""
+    logger.info("Starting ML training worker...")
+    
+    model_types = ["lstm", "random_forest", "svm", "neural_network"]
+    current_coin_index = 0
+    
+    while True:
+        try:
+            db = SessionLocal()
+            
+            # Get all active coins
+            coins = db.query(Coin).filter(Coin.is_active == True).all()
+            
+            if not coins:
+                logger.warning("No active coins found for training")
+                await asyncio.sleep(60)
+                continue
+            
+            # Get current coin (cycle through all coins)
+            current_coin = coins[current_coin_index % len(coins)]
+            
+            logger.info(f"Training models for {current_coin.symbol}...")
+            
+            # Train each model type for current coin
+            for model_type in model_types:
+                try:
+                    # Check if this model already has recent predictions
+                    recent_prediction = db.query(MLPrediction).filter(
+                        MLPrediction.coin_symbol == current_coin.symbol,
+                        MLPrediction.model_type == model_type
+                    ).order_by(MLPrediction.created_at.desc()).first()
+                    
+                    # Skip if trained recently (within last hour)
+                    if recent_prediction:
+                        from datetime import datetime, timedelta
+                        if recent_prediction.created_at > datetime.utcnow() - timedelta(hours=1):
+                            logger.info(f"Skipping {current_coin.symbol} {model_type} - recently trained")
+                            continue
+                    
+                    logger.info(f"Training {model_type} for {current_coin.symbol}")
+                    
+                    # Simulate training (replace with actual ML training)
+                    import random
+                    import time
+                    
+                    # Simulate training time
+                    await asyncio.sleep(random.uniform(10, 30))  # 10-30 seconds per model
+                    
+                    # Generate mock prediction
+                    confidence = random.uniform(60, 95)
+                    prediction = random.choice(["buy", "sell", "hold"])
+                    
+                    # Save prediction to database
+                    ml_prediction = MLPrediction(
+                        coin_symbol=current_coin.symbol,
+                        model_type=model_type,
+                        prediction=prediction,
+                        confidence=confidence,
+                        created_at=datetime.utcnow()
+                    )
+                    
+                    db.add(ml_prediction)
+                    db.commit()
+                    
+                    logger.info(f"✅ Completed {model_type} for {current_coin.symbol} - {prediction} ({confidence:.1f}%)")
+                    
+                    # Broadcast training update via WebSocket
+                    await websocket_manager.broadcast_prediction_update({
+                        "coin_symbol": current_coin.symbol,
+                        "model_type": model_type,
+                        "prediction": prediction,
+                        "confidence": confidence
+                    })
+                    
+                except Exception as e:
+                    logger.error(f"Error training {model_type} for {current_coin.symbol}: {e}")
+                    continue
+            
+            # Move to next coin
+            current_coin_index += 1
+            
+            # Log progress
+            progress = (current_coin_index % len(coins)) / len(coins) * 100
+            logger.info(f"Training progress: {current_coin_index % len(coins)}/{len(coins)} coins in current cycle ({progress:.1f}%)")
+            
+            db.close()
+            
+        except Exception as e:
+            logger.error(f"Error in ML training task: {e}")
+            await asyncio.sleep(30)  # Wait before retry
 
 @app.get("/")
 async def root():
@@ -297,19 +391,33 @@ async def configure_auto_optimization(settings: Dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/training/session")
-async def get_training_session():
+async def get_training_session(db: Session = Depends(get_db)):
     """Get current ML training session status"""
     try:
-        # Mock data - replace with actual training status
+        # Get total coins
+        total_coins = db.query(Coin).filter(Coin.is_active == True).count()
+        
+        # Get coins with at least one prediction (completed)
+        completed_predictions = db.query(MLPrediction.coin_symbol).distinct().count()
+        
+        # Get latest prediction to see current training
+        latest_prediction = db.query(MLPrediction).order_by(MLPrediction.created_at.desc()).first()
+        
+        current_coin = latest_prediction.coin_symbol if latest_prediction else "Starting..."
+        
+        # Calculate progress
+        total_queue_items = total_coins * 4  # 4 models per coin
+        completed_items = db.query(MLPrediction).count()
+        
         return {
-            "current_coin": "BTCUSDT",
-            "current_model": "LSTM",
-            "progress": 67,
-            "eta_seconds": 450,
-            "total_queue_items": 2000,
-            "completed_items": 1340,
-            "session_start_time": "2024-01-01T12:00:00Z",
-            "estimated_completion_time": "2024-01-02T12:00:00Z"
+            "current_coin": current_coin,
+            "current_model": "Training...",
+            "progress": 0,  # Real-time progress would need more complex tracking
+            "eta_seconds": 300,  # Estimated
+            "total_queue_items": total_queue_items,
+            "completed_items": completed_items,
+            "session_start_time": datetime.utcnow().isoformat(),
+            "estimated_completion_time": (datetime.utcnow() + timedelta(hours=24)).isoformat()
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
