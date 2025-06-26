@@ -49,7 +49,7 @@ async def startup_event():
     # Start background tasks
     asyncio.create_task(sync_coins_task())
     asyncio.create_task(trading_engine.process_trading_signals())
-    asyncio.create_task(ml_training_task())
+    # asyncio.create_task(ml_training_task())  # Disabled - using separate worker
     
     logger.info("Platform started successfully!")
 
