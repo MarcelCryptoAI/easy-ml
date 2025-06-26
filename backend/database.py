@@ -2,9 +2,16 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
+import os
 from .config import settings
 
-engine = create_engine(settings.database_url)
+# Try to get database URL from Railway or environment
+database_url = settings.database_url or os.getenv("DATABASE_URL")
+
+if not database_url:
+    raise Exception("DATABASE_URL not found. Please set DATABASE_URL in Railway variables.")
+
+engine = create_engine(database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

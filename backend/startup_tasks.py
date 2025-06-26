@@ -69,23 +69,31 @@ async def sync_initial_coins(db: Session):
 
 def validate_configuration():
     """Validate that all required configuration is present"""
+    import os
     missing = []
     
-    if not settings.bybit_api_key:
-        missing.append("BYBIT_API_KEY")
+    # Check all required environment variables
+    required_vars = {
+        "BYBIT_API_KEY": settings.bybit_api_key or os.getenv("BYBIT_API_KEY"),
+        "BYBIT_API_SECRET": settings.bybit_api_secret or os.getenv("BYBIT_API_SECRET"),
+        "OPENAI_API_KEY": settings.openai_api_key or os.getenv("OPENAI_API_KEY"),
+        "DATABASE_URL": settings.database_url or os.getenv("DATABASE_URL")
+    }
     
-    if not settings.bybit_api_secret:
-        missing.append("BYBIT_API_SECRET")
-        
-    if not settings.openai_api_key:
-        missing.append("OPENAI_API_KEY")
-    
-    if not settings.database_url:
-        missing.append("DATABASE_URL")
+    for var_name, var_value in required_vars.items():
+        if not var_value:
+            missing.append(var_name)
     
     if missing:
         logger.error(f"Missing required environment variables: {', '.join(missing)}")
-        logger.error("Please set these variables in Railway dashboard")
+        logger.error("Please set these variables in Railway dashboard under 'Variables' tab")
+        
+        # Show what Railway should have automatically
+        if "DATABASE_URL" in missing:
+            logger.error("DATABASE_URL should be automatically provided by Railway PostgreSQL")
+            logger.error("Make sure PostgreSQL plugin is added to your Railway project")
+        
         raise Exception(f"Missing required environment variables: {', '.join(missing)}")
     
     logger.info("Configuration validation passed - all required keys present")
+    logger.info(f"Using database: {required_vars['DATABASE_URL'][:20]}...")  # Show partial URL
