@@ -104,17 +104,24 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const totalPnL = closedTrades.reduce((sum: number, trade: Trade) => sum + trade.pnl, 0);
-  const winRate = closedTrades.length > 0 
+  // ALLEEN echte data - geen fallback waardes
+  const totalPnL = closedTrades?.length > 0 
+    ? closedTrades.reduce((sum: number, trade: Trade) => sum + trade.pnl, 0) 
+    : null;
+  
+  const winRate = closedTrades?.length > 0 
     ? (closedTrades.filter((trade: Trade) => trade.pnl > 0).length / closedTrades.length) * 100 
-    : 0;
+    : null;
 
-  const pnlChartData = closedTrades.slice(-20).map((trade: Trade, index: number) => ({
-    index: index + 1,
-    pnl: trade.pnl,
-    cumulative: closedTrades.slice(0, closedTrades.indexOf(trade) + 1)
-      .reduce((sum: number, t: Trade) => sum + t.pnl, 0)
-  }));
+  // Alleen chart als er echte data is
+  const pnlChartData = closedTrades?.length > 0 
+    ? closedTrades.slice(-20).map((trade: Trade, index: number) => ({
+        index: index + 1,
+        pnl: trade.pnl,
+        cumulative: closedTrades.slice(0, closedTrades.indexOf(trade) + 1)
+          .reduce((sum: number, t: Trade) => sum + t.pnl, 0)
+      }))
+    : [];
 
   return (
     <Box sx={{ p: 3 }}>
@@ -158,8 +165,8 @@ export const Dashboard: React.FC = () => {
               <Typography color="textSecondary" gutterBottom>
                 Total P&L
               </Typography>
-              <Typography variant="h5" color={totalPnL >= 0 ? 'success.main' : 'error.main'}>
-                {totalPnL.toFixed(2)}%
+              <Typography variant="h5" color={totalPnL !== null && totalPnL >= 0 ? 'success.main' : 'error.main'}>
+                {totalPnL !== null ? `${totalPnL.toFixed(2)}%` : 'No trades yet'}
               </Typography>
             </CardContent>
           </Card>
@@ -172,7 +179,7 @@ export const Dashboard: React.FC = () => {
                 Win Rate
               </Typography>
               <Typography variant="h5">
-                {winRate.toFixed(1)}%
+                {winRate !== null ? `${winRate.toFixed(1)}%` : 'No trades yet'}
               </Typography>
             </CardContent>
           </Card>
@@ -185,7 +192,7 @@ export const Dashboard: React.FC = () => {
                 Active Positions
               </Typography>
               <Typography variant="h5">
-                {positions.length}
+                {positions?.length || 0}
               </Typography>
             </CardContent>
           </Card>
@@ -198,33 +205,39 @@ export const Dashboard: React.FC = () => {
                 Total Trades
               </Typography>
               <Typography variant="h5">
-                {closedTrades.length}
+                {closedTrades?.length || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* P&L Chart */}
+        {/* P&L Chart - ALLEEN bij echte data */}
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               P&L Performance
             </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={pnlChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="index" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="cumulative" 
-                  stroke="#8884d8" 
-                  strokeWidth={2}
-                  name="Cumulative P&L"
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {pnlChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={pnlChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="index" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line 
+                    type="monotone" 
+                    dataKey="cumulative" 
+                    stroke="#8884d8" 
+                    strokeWidth={2}
+                    name="Cumulative P&L"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <Alert severity="info">
+                No trading data yet. Start trading to see performance charts.
+              </Alert>
+            )}
           </Paper>
         </Grid>
 
@@ -259,60 +272,66 @@ export const Dashboard: React.FC = () => {
           </Paper>
         </Grid>
 
-        {/* Recent Trades */}
+        {/* Recent Trades - ALLEEN echte trades */}
         <Grid item xs={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Recent Trades
             </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Symbol</TableCell>
-                    <TableCell>Side</TableCell>
-                    <TableCell>Size</TableCell>
-                    <TableCell>Price</TableCell>
-                    <TableCell>P&L</TableCell>
-                    <TableCell>Confidence</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Date</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {[...openTrades, ...closedTrades.slice(-10)].map((trade: Trade) => (
-                    <TableRow key={trade.id}>
-                      <TableCell>{trade.coin_symbol}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={trade.side} 
-                          color={trade.side === 'buy' ? 'success' : 'error'} 
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{trade.size.toFixed(4)}</TableCell>
-                      <TableCell>${trade.price.toFixed(2)}</TableCell>
-                      <TableCell 
-                        sx={{ color: trade.pnl >= 0 ? 'success.main' : 'error.main' }}
-                      >
-                        {trade.pnl.toFixed(2)}%
-                      </TableCell>
-                      <TableCell>{trade.ml_confidence.toFixed(1)}%</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={trade.status} 
-                          color={trade.status === 'open' ? 'primary' : 'default'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {new Date(trade.opened_at).toLocaleDateString()}
-                      </TableCell>
+            {(openTrades?.length > 0 || closedTrades?.length > 0) ? (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Symbol</TableCell>
+                      <TableCell>Side</TableCell>
+                      <TableCell>Size</TableCell>
+                      <TableCell>Price</TableCell>
+                      <TableCell>P&L</TableCell>
+                      <TableCell>Confidence</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Date</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {[...(openTrades || []), ...(closedTrades?.slice(-10) || [])].map((trade: Trade) => (
+                      <TableRow key={trade.id}>
+                        <TableCell>{trade.coin_symbol}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={trade.side} 
+                            color={trade.side === 'buy' ? 'success' : 'error'} 
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>{trade.size.toFixed(4)}</TableCell>
+                        <TableCell>${trade.price.toFixed(2)}</TableCell>
+                        <TableCell 
+                          sx={{ color: trade.pnl >= 0 ? 'success.main' : 'error.main' }}
+                        >
+                          {trade.pnl.toFixed(2)}%
+                        </TableCell>
+                        <TableCell>{trade.ml_confidence.toFixed(1)}%</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={trade.status} 
+                            color={trade.status === 'open' ? 'primary' : 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {new Date(trade.opened_at).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Alert severity="info">
+                No trades yet. Enable trading to start autonomous ML-based trading.
+              </Alert>
+            )}
           </Paper>
         </Grid>
       </Grid>

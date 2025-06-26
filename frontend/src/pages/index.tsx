@@ -10,6 +10,8 @@ import {
 } from '@mui/material';
 import { Dashboard } from '../components/Dashboard';
 import { CoinAnalysis } from '../components/CoinAnalysis';
+import { MLProgress } from '../components/MLProgress';
+import { StrategyConfigurator } from '../components/StrategyConfigurator';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -54,6 +56,8 @@ export default function Home() {
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="main navigation">
             <Tab label="Dashboard" />
+            <Tab label="ML Progress" />
+            <Tab label="Strategy Config" />
             <Tab label="Coin Analysis" />
           </Tabs>
         </Box>
@@ -63,6 +67,14 @@ export default function Home() {
         </TabPanel>
         
         <TabPanel value={tabValue} index={1}>
+          <MLProgress />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
+          <StrategyConfigurator />
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={3}>
           <CoinAnalysis />
         </TabPanel>
       </Container>

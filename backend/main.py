@@ -14,6 +14,7 @@ from .trading_engine import TradingEngine
 from .websocket_manager import WebSocketManager
 from .openai_optimizer import OpenAIOptimizer
 from .startup_tasks import initialize_database, validate_configuration
+from .backtest_engine import BacktestEngine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ websocket_manager = WebSocketManager()
 bybit_client = BybitClient()
 trading_engine = TradingEngine(bybit_client, websocket_manager)
 openai_optimizer = OpenAIOptimizer()
+backtest_engine = BacktestEngine()
 
 @app.on_event("startup")
 async def startup_event():
@@ -205,6 +207,18 @@ async def optimize_strategy(symbol: str):
 async def batch_optimize():
     result = await openai_optimizer.batch_optimize_strategies()
     return result
+
+@app.post("/backtest/{symbol}")
+async def run_backtest(symbol: str, backtest_data: Dict):
+    """Run backtest for a specific symbol with given strategy parameters"""
+    try:
+        strategy_params = backtest_data.get("strategy", {})
+        period_months = backtest_data.get("period_months", 6)
+        
+        result = backtest_engine.run_backtest(symbol, strategy_params, period_months)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

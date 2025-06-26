@@ -80,13 +80,14 @@ export const CoinAnalysis: React.FC = () => {
     return 'error';
   };
 
-  const averageConfidence = predictions.length > 0 
+  // ALLEEN echte ML data - geen fallback waardes
+  const averageConfidence = predictions?.length > 0 
     ? predictions.reduce((sum, pred) => sum + pred.confidence, 0) / predictions.length
-    : 0;
+    : null;
 
-  const buySignals = predictions.filter(p => p.prediction === 'buy').length;
-  const sellSignals = predictions.filter(p => p.prediction === 'sell').length;
-  const holdSignals = predictions.filter(p => p.prediction === 'hold').length;
+  const buySignals = predictions?.filter(p => p.prediction === 'buy').length || 0;
+  const sellSignals = predictions?.filter(p => p.prediction === 'sell').length || 0;
+  const holdSignals = predictions?.filter(p => p.prediction === 'hold').length || 0;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -164,51 +165,63 @@ export const CoinAnalysis: React.FC = () => {
                   <CardContent>
                     <Typography color="textSecondary">Average Confidence</Typography>
                     <Typography variant="h5">
-                      <Chip 
-                        label={`${averageConfidence.toFixed(1)}%`}
-                        color={getConfidenceColor(averageConfidence)}
-                      />
+                      {averageConfidence !== null ? (
+                        <Chip 
+                          label={`${averageConfidence.toFixed(1)}%`}
+                          color={getConfidenceColor(averageConfidence)}
+                        />
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          Waiting for ML predictions...
+                        </Typography>
+                      )}
                     </Typography>
                   </CardContent>
                 </Card>
 
-                {/* Individual Predictions */}
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Model</TableCell>
-                        <TableCell>Prediction</TableCell>
-                        <TableCell>Confidence</TableCell>
-                        <TableCell>Time</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {predictions.map((prediction: MLPrediction) => (
-                        <TableRow key={prediction.model_type}>
-                          <TableCell>{prediction.model_type}</TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={prediction.prediction}
-                              color={getSignalColor(prediction.prediction)}
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={`${prediction.confidence.toFixed(1)}%`}
-                              color={getConfidenceColor(prediction.confidence)}
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {new Date(prediction.created_at).toLocaleTimeString()}
-                          </TableCell>
+                {/* Individual Predictions - ALLEEN echte ML data */}
+                {predictions?.length > 0 ? (
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Model</TableCell>
+                          <TableCell>Prediction</TableCell>
+                          <TableCell>Confidence</TableCell>
+                          <TableCell>Time</TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      </TableHead>
+                      <TableBody>
+                        {predictions.map((prediction: MLPrediction) => (
+                          <TableRow key={prediction.model_type}>
+                            <TableCell>{prediction.model_type}</TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={prediction.prediction}
+                                color={getSignalColor(prediction.prediction)}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={`${prediction.confidence.toFixed(1)}%`}
+                                color={getConfidenceColor(prediction.confidence)}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {new Date(prediction.created_at).toLocaleTimeString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Alert severity="info">
+                    ML models are training. Predictions will appear here once complete.
+                  </Alert>
+                )}
               </Paper>
             </Grid>
 
