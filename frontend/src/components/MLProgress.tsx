@@ -32,10 +32,12 @@ interface MLTrainingStatus {
 }
 
 export const MLProgress: React.FC = () => {
-  const { data: coins = [], refetch: refetchCoins } = useQuery({
+  const { data: coins = [], refetch: refetchCoins, error: coinsError } = useQuery({
     queryKey: ['coins'],
     queryFn: tradingApi.getCoins,
-    refetchInterval: 30000
+    refetchInterval: 30000,
+    retry: 3,
+    retryDelay: 1000
   });
 
   const { data: mlStatus = [], isLoading, refetch } = useQuery({
@@ -186,6 +188,14 @@ export const MLProgress: React.FC = () => {
         </Grid>
       </Grid>
 
+      {/* Connection Status */}
+      {coinsError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          ❌ Backend connection failed. Check if backend is running.
+          <br />Backend URL: {process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}
+        </Alert>
+      )}
+
       {/* Detailed Training Status */}
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom>
@@ -194,6 +204,10 @@ export const MLProgress: React.FC = () => {
         
         {isLoading ? (
           <Alert severity="info">Loading ML training status...</Alert>
+        ) : coinsError ? (
+          <Alert severity="error">
+            Failed to load training status. Backend may be disconnected.
+          </Alert>
         ) : mlStatus.length > 0 ? (
           <TableContainer>
             <Table>

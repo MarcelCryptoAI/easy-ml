@@ -5,8 +5,20 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-pro
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
+
+// Add response interceptor for better error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error.response?.status, error.message);
+    return Promise.reject(error);
+  }
+);
 
 export const tradingApi = {
   // Coins
