@@ -51,7 +51,7 @@ async def startup_event():
     # Start background tasks
     asyncio.create_task(sync_coins_task())
     asyncio.create_task(trading_engine.process_trading_signals())
-    asyncio.create_task(ml_training_task_10_models())  # 10 models ML training
+    asyncio.create_task(ml_training_task())  # 10 models ML training
     
     logger.info("Platform started successfully! 10-model training active!")
 
@@ -178,7 +178,11 @@ async def ml_training_task():
     """Continuous ML training task"""
     logger.info("Starting ML training worker...")
     
-    model_types = ["lstm", "random_forest", "svm", "neural_network"]
+    model_types = [
+        "lstm", "random_forest", "svm", "neural_network",
+        "xgboost", "lightgbm", "catboost", "transformer", 
+        "gru", "cnn_1d"
+    ]
     current_coin_index = 0
     
     while True:
