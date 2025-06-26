@@ -1,0 +1,47 @@
+import axios from 'axios';
+import { Coin, Trade, Position, TradingStrategy, MLPrediction } from '../types';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+});
+
+export const tradingApi = {
+  // Coins
+  getCoins: (): Promise<Coin[]> => 
+    api.get('/coins').then(res => res.data),
+
+  // Predictions
+  getPredictions: (symbol: string): Promise<MLPrediction[]> =>
+    api.get(`/predictions/${symbol}`).then(res => res.data),
+
+  // Trades
+  getTrades: (status?: string): Promise<Trade[]> =>
+    api.get('/trades', { params: { status } }).then(res => res.data),
+
+  // Positions
+  getPositions: (): Promise<{ success: boolean; positions: Position[] }> =>
+    api.get('/positions').then(res => res.data),
+
+  // Strategy
+  getStrategy: (symbol: string): Promise<TradingStrategy> =>
+    api.get(`/strategy/${symbol}`).then(res => res.data),
+
+  updateStrategy: (symbol: string, strategy: Partial<TradingStrategy>): Promise<{ success: boolean; message: string }> =>
+    api.put(`/strategy/${symbol}`, strategy).then(res => res.data),
+
+  // Trading controls
+  toggleTrading: (enable: boolean): Promise<{ success: boolean; message: string }> =>
+    api.post('/trading/toggle', { enable }).then(res => res.data),
+
+  // AI Optimization
+  optimizeStrategy: (symbol: string): Promise<any> =>
+    api.post(`/optimize/${symbol}`).then(res => res.data),
+
+  batchOptimize: (): Promise<any> =>
+    api.post('/optimize/batch').then(res => res.data),
+};
+
+export default api;

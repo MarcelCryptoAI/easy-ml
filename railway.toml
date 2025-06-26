@@ -1,0 +1,26 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+
+[[services]]
+name = "backend"
+source = "."
+
+[[services]]
+name = "ml-worker"
+source = "."
+startCommand = "python ml_worker/worker.py"
+
+[[services]]
+name = "frontend"
+source = "./frontend"
+startCommand = "npm start"
+
+[environments.production.variables]
+BYBIT_API_KEY = "${{BYBIT_API_KEY}}"
+BYBIT_API_SECRET = "${{BYBIT_API_SECRET}}"
+OPENAI_API_KEY = "${{OPENAI_API_KEY}}"
+DATABASE_URL = "${{DATABASE_URL}}"
+REDIS_URL = "${{REDIS_URL}}"
