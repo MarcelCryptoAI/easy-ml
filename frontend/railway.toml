@@ -1,0 +1,11 @@
+[build]
+command = "npm run build"
+
+[deploy]
+startCommand = "npm start"
+
+[build.env]
+NODE_ENV = "production"
+
+[env]
+NEXT_PUBLIC_BACKEND_URL = "https://easy-ml-production.up.railway.app"
