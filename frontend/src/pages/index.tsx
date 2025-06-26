@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import {
-  AppBar,
-  Toolbar,
-  Typography,
   Container,
   Tabs,
   Tab,
@@ -15,6 +12,7 @@ import { StrategyConfigurator } from '../components/StrategyConfigurator';
 import { TrainingStatus } from '../components/TrainingStatus';
 import { StrategyOptimizer } from '../components/StrategyOptimizer';
 import { CompactTradingDashboard } from '../components/CompactTradingDashboard';
+import { StatusTopBar } from '../components/StatusTopBar';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -47,13 +45,7 @@ export default function Home() {
 
   return (
     <>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            🤖 Crypto Trading ML Platform
-          </Typography>
-        </Toolbar>
-      </AppBar>
+      <StatusTopBar />
 
       <Container maxWidth={false} disableGutters>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

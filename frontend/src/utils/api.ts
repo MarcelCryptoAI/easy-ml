@@ -64,6 +64,10 @@ export const tradingApi = {
 
   optimizeAllStrategies: (): Promise<any> =>
     api.post('/optimize-all-strategies').then(res => res.data),
+
+  // Health check
+  getHealth: (): Promise<any> =>
+    api.get('/health').then(res => res.data),
 };
 
 export default api;
