@@ -55,7 +55,7 @@ export const CompactTradingDashboard: React.FC = () => {
   const { data: dashboardData = [], isLoading, refetch } = useQuery({
     queryKey: ['compact-dashboard'],
     queryFn: async () => {
-      const coinDataPromises = coins.slice(0, 100).map(async (coin) => { // Limit to 100 for performance
+      const coinDataPromises = coins.map(async (coin) => { // All coins, no limit
         try {
           const recommendation = await tradingApi.getRecommendation(coin.symbol);
           const predictions = await tradingApi.getPredictions(coin.symbol);
