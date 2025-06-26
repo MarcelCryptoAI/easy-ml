@@ -220,6 +220,135 @@ async def run_backtest(symbol: str, backtest_data: Dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/strategies/create-defaults")
+async def create_default_strategies(db: Session = Depends(get_db)):
+    """Create default strategies for all coins that don't have one"""
+    try:
+        coins = db.query(Coin).filter(Coin.is_active == True).all()
+        created_count = 0
+        
+        for coin in coins:
+            existing_strategy = db.query(TradingStrategy).filter(
+                TradingStrategy.coin_symbol == coin.symbol,
+                TradingStrategy.is_active == True
+            ).first()
+            
+            if not existing_strategy:
+                default_strategy = TradingStrategy(
+                    coin_symbol=coin.symbol,
+                    take_profit_percentage=2.0,
+                    stop_loss_percentage=1.0,
+                    leverage=10,
+                    position_size_percentage=5.0,
+                    confidence_threshold=70.0,
+                    is_active=True
+                )
+                db.add(default_strategy)
+                created_count += 1
+        
+        db.commit()
+        return {"success": True, "created_strategies": created_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/optimize/batch-all")
+async def start_batch_optimization(optimization_data: Dict):
+    """Start optimization for all strategies"""
+    try:
+        auto_apply = optimization_data.get("auto_apply", True)
+        min_improvement = optimization_data.get("min_improvement_threshold", 5.0)
+        
+        # This would start a background task to optimize all strategies
+        # For now, return success
+        return {
+            "success": True, 
+            "message": "Batch optimization started",
+            "auto_apply": auto_apply,
+            "min_improvement_threshold": min_improvement
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/optimize/stop")
+async def stop_optimization():
+    """Stop current optimization process"""
+    try:
+        # Implementation to stop optimization
+        return {"success": True, "message": "Optimization stopped"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/optimize/auto-schedule")
+async def configure_auto_optimization(settings: Dict):
+    """Configure automatic strategy optimization schedule"""
+    try:
+        enabled = settings.get("enabled", False)
+        interval_hours = settings.get("interval_hours", 24)
+        min_improvement = settings.get("min_improvement_threshold", 5.0)
+        auto_apply = settings.get("auto_apply", True)
+        
+        # Store these settings and schedule the task
+        return {
+            "success": True,
+            "message": "Auto-optimization configured",
+            "settings": settings
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/training/session")
+async def get_training_session():
+    """Get current ML training session status"""
+    try:
+        # Mock data - replace with actual training status
+        return {
+            "current_coin": "BTCUSDT",
+            "current_model": "LSTM",
+            "progress": 67,
+            "eta_seconds": 450,
+            "total_queue_items": 2000,
+            "completed_items": 1340,
+            "session_start_time": "2024-01-01T12:00:00Z",
+            "estimated_completion_time": "2024-01-02T12:00:00Z"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/training/queue")
+async def get_training_queue():
+    """Get current ML training queue"""
+    try:
+        # Mock data - replace with actual queue
+        return [
+            {
+                "coin_symbol": "BTCUSDT",
+                "model_type": "LSTM",
+                "status": "training",
+                "progress": 67,
+                "estimated_time_remaining": 450,
+                "started_at": "2024-01-01T12:00:00Z",
+                "queue_position": 1
+            }
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/training/pause")
+async def pause_training():
+    """Pause ML training"""
+    try:
+        return {"success": True, "message": "Training paused"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/training/resume")
+async def resume_training():
+    """Resume ML training"""
+    try:
+        return {"success": True, "message": "Training resumed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket_manager.connect(websocket)

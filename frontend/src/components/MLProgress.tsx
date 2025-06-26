@@ -41,8 +41,8 @@ export const MLProgress: React.FC = () => {
   const { data: mlStatus = [], isLoading, refetch } = useQuery({
     queryKey: ['ml-training-status'],
     queryFn: async () => {
-      // Get ML training status for all coins
-      const statusPromises = coins.slice(0, 20).map(async (coin) => {
+      // Get ML training status for all coins (remove limit)
+      const statusPromises = coins.map(async (coin) => {
         try {
           const predictions = await tradingApi.getPredictions(coin.symbol);
           return {
@@ -189,7 +189,7 @@ export const MLProgress: React.FC = () => {
       {/* Detailed Training Status */}
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom>
-          Detailed Training Status (Top 20 Coins)
+          Detailed Training Status (All {mlStatus.length} Coins)
         </Typography>
         
         {isLoading ? (
@@ -231,16 +231,26 @@ export const MLProgress: React.FC = () => {
                       
                       <TableCell>
                         <Box display="flex" gap={0.5} flexWrap="wrap">
-                          {status.models_trained.map((model) => (
-                            <Chip
-                              key={model}
-                              label={model}
-                              color={getModelTypeColor(model)}
-                              size="small"
-                              variant="outlined"
-                            />
-                          ))}
+                          {['lstm', 'random_forest', 'svm', 'neural_network'].map((modelType) => {
+                            const isTrained = status.models_trained.includes(modelType);
+                            return (
+                              <Chip
+                                key={modelType}
+                                label={modelType.replace('_', ' ').toUpperCase()}
+                                color={isTrained ? getModelTypeColor(modelType) : 'default'}
+                                size="small"
+                                variant={isTrained ? "filled" : "outlined"}
+                                sx={{ 
+                                  opacity: isTrained ? 1 : 0.5,
+                                  textDecoration: isTrained ? 'none' : 'line-through'
+                                }}
+                              />
+                            );
+                          })}
                         </Box>
+                        <Typography variant="caption" color="textSecondary">
+                          {status.models_trained.length}/4 trained
+                        </Typography>
                       </TableCell>
                       
                       <TableCell>

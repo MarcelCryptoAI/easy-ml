@@ -12,6 +12,8 @@ import { Dashboard } from '../components/Dashboard';
 import { CoinAnalysis } from '../components/CoinAnalysis';
 import { MLProgress } from '../components/MLProgress';
 import { StrategyConfigurator } from '../components/StrategyConfigurator';
+import { TrainingStatus } from '../components/TrainingStatus';
+import { StrategyOptimizer } from '../components/StrategyOptimizer';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -57,7 +59,9 @@ export default function Home() {
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="main navigation">
             <Tab label="Dashboard" />
             <Tab label="ML Progress" />
+            <Tab label="Training Status" />
             <Tab label="Strategy Config" />
+            <Tab label="Strategy Optimizer" />
             <Tab label="Coin Analysis" />
           </Tabs>
         </Box>
@@ -71,10 +75,18 @@ export default function Home() {
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
+          <TrainingStatus />
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
           <StrategyConfigurator />
         </TabPanel>
+
+        <TabPanel value={tabValue} index={4}>
+          <StrategyOptimizer />
+        </TabPanel>
         
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={5}>
           <CoinAnalysis />
         </TabPanel>
       </Container>
