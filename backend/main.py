@@ -53,7 +53,7 @@ async def startup_event():
     asyncio.create_task(trading_engine.process_trading_signals())
     asyncio.create_task(ml_training_task_10_models())  # 10 models ML training
     
-    logger.info("Platform started successfully!")
+    logger.info("Platform started successfully! 10-model training active!")
 
 async def sync_coins_task():
     while True:
