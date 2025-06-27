@@ -389,119 +389,6 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
 
-# NEW ENDPOINTS - Critical for frontend functionality
-
-@app.get("/training-info")
-async def get_training_info(db: Session = Depends(get_db)):
-    """Get current ML training information with REAL data"""
-    try:
-        total_coins = db.query(Coin).filter(Coin.is_active == True).count()
-        model_types = ["lstm", "random_forest", "svm", "neural_network", "xgboost", "lightgbm", "catboost", "transformer", "gru", "cnn_1d"]
-        
-        total_models_expected = total_coins * len(model_types)
-        completed_predictions = db.query(MLPrediction).count()
-        overall_progress = (completed_predictions / total_models_expected * 100) if total_models_expected > 0 else 0
-        overall_progress = min(100, overall_progress)
-        
-        global current_training_coin, current_training_model, training_progress, training_paused
-        
-        return {
-            "total_coins": total_coins,
-            "total_models": len(model_types),
-            "total_predictions_possible": total_models_expected,
-            "completed_predictions": completed_predictions,
-            "overall_percentage": round(overall_progress, 2),
-            "current_coin": current_training_coin or "None",
-            "current_model": current_training_model or "None",
-            "current_model_progress": training_progress,
-            "status": "paused" if training_paused else "training" if current_training_coin else "idle"
-        }
-    except Exception as e:
-        logger.error(f"Error getting training info: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/trading/status")
-async def get_account_balance():
-    """Get account balance and trading status"""
-    try:
-        balance = trading_engine._get_available_balance()
-        positions = bybit_client.get_positions()
-        
-        return {
-            "success": True,
-            "balance": {"available_balance": balance},
-            "trading_enabled": trading_engine.enabled,
-            "open_positions": len(positions)
-        }
-    except Exception as e:
-        logger.error(f"Error getting trading status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/price/{symbol}")
-async def get_current_price(symbol: str):
-    """Get current price and market data for a symbol"""
-    try:
-        klines = bybit_client.get_klines(symbol, interval="1", limit=2)
-        if not klines:
-            raise HTTPException(status_code=404, detail=f"Price data not found for {symbol}")
-        
-        current_price = float(klines[-1]["close"])
-        return {"symbol": symbol, "price": current_price}
-    except Exception as e:
-        logger.error(f"Error getting price for {symbol}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/optimize/status")
-async def get_optimization_status():
-    """Get current optimization session status"""
-    try:
-        return {
-            "is_running": False,
-            "total_coins": 0,
-            "completed_coins": 0,
-            "current_coin": "",
-            "session_start_time": datetime.utcnow().isoformat(),
-            "estimated_completion_time": datetime.utcnow().isoformat(),
-            "auto_apply_optimizations": True
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/optimize/queue")
-async def get_optimization_queue():
-    """Get current optimization queue"""
-    try:
-        return []
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/optimize/apply/{symbol}")
-async def apply_optimization(symbol: str, optimization_data: Dict, db: Session = Depends(get_db)):
-    """Apply optimized parameters to a trading strategy"""
-    try:
-        strategy = db.query(TradingStrategy).filter(
-            TradingStrategy.coin_symbol == symbol,
-            TradingStrategy.is_active == True
-        ).first()
-        
-        if not strategy:
-            strategy = TradingStrategy(coin_symbol=symbol, is_active=True)
-            db.add(strategy)
-        
-        strategy.take_profit_percentage = optimization_data.get("take_profit_percentage", 2.0)
-        strategy.stop_loss_percentage = optimization_data.get("stop_loss_percentage", 1.0)
-        strategy.leverage = optimization_data.get("leverage", 10)
-        strategy.updated_by_ai = True
-        strategy.ai_optimization_reason = optimization_data.get("reason", "AI optimization applied")
-        strategy.updated_at = datetime.utcnow()
-        
-        db.commit()
-        
-        return {"success": True, "message": f"Optimization applied to {symbol}"}
-    except Exception as e:
-        logger.error(f"Error applying optimization: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/trading/manual")
 async def execute_manual_trade(trade_data: Dict, db: Session = Depends(get_db)):
     """Execute manual trade with specified parameters"""
@@ -553,6 +440,33 @@ async def execute_manual_trade(trade_data: Dict, db: Session = Depends(get_db)):
         }
     except Exception as e:
         logger.error(f"Error in manual trade execution: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/optimize/apply/{symbol}")
+async def apply_optimization(symbol: str, optimization_data: Dict, db: Session = Depends(get_db)):
+    """Apply optimized parameters to a trading strategy"""
+    try:
+        strategy = db.query(TradingStrategy).filter(
+            TradingStrategy.coin_symbol == symbol,
+            TradingStrategy.is_active == True
+        ).first()
+        
+        if not strategy:
+            strategy = TradingStrategy(coin_symbol=symbol, is_active=True)
+            db.add(strategy)
+        
+        strategy.take_profit_percentage = optimization_data.get("take_profit_percentage", 2.0)
+        strategy.stop_loss_percentage = optimization_data.get("stop_loss_percentage", 1.0)
+        strategy.leverage = optimization_data.get("leverage", 10)
+        strategy.updated_by_ai = True
+        strategy.ai_optimization_reason = optimization_data.get("reason", "AI optimization applied")
+        strategy.updated_at = datetime.utcnow()
+        
+        db.commit()
+        
+        return {"success": True, "message": f"Optimization applied to {symbol}"}
+    except Exception as e:
+        logger.error(f"Error applying optimization: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Quick deployment test endpoint
