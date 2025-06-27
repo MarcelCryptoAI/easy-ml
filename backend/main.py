@@ -187,7 +187,7 @@ async def ml_training_task():
     
     while True:
         try:
-            db = SessionLocal()
+            db = next(get_db())
             
             # Get all active coins
             coins = db.query(Coin).filter(Coin.is_active == True).all()
