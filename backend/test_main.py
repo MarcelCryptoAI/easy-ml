@@ -57,6 +57,54 @@ async def trading_status():
         "open_positions": 0
     }
 
+@app.get("/signals")
+async def get_trading_signals():
+    return {
+        "success": True,
+        "signals": [
+            {
+                "coin_symbol": "BTCUSDT",
+                "signal": "LONG",
+                "confidence": 85.2,
+                "avg_model_confidence": 82.5,
+                "models_consensus": {"buy": 7, "sell": 1, "hold": 2},
+                "reasoning": "Strong bullish consensus across 7 models with high confidence levels"
+            },
+            {
+                "coin_symbol": "ETHUSDT", 
+                "signal": "SHORT",
+                "confidence": 78.9,
+                "avg_model_confidence": 76.2,
+                "models_consensus": {"buy": 2, "sell": 6, "hold": 2},
+                "reasoning": "Bearish trend detected with 6 models agreeing on sell signal"
+            }
+        ],
+        "total_signals": 2,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+@app.get("/price/{symbol}")
+async def get_price(symbol: str):
+    return {
+        "symbol": symbol,
+        "price": 45250.75 if "BTC" in symbol else 2850.25
+    }
+
+@app.post("/trading/manual")
+async def manual_trade(trade_data: dict):
+    return {
+        "success": True,
+        "message": f"Manual {trade_data.get('side', 'BUY')} order simulated",
+        "trade_details": {
+            "coin_symbol": trade_data.get("coin_symbol", "BTCUSDT"),
+            "side": trade_data.get("side", "buy"),
+            "amount": 100.0,
+            "position_size": 0.002,
+            "current_price": 45250.75,
+            "leverage": trade_data.get("leverage", 10)
+        }
+    }
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
