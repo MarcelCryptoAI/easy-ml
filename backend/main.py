@@ -144,11 +144,24 @@ async def ml_training_task_10_models():
                     
                     logger.info(f"🔧 Training {model_type.upper()} for {current_coin.symbol}")
                     
+                    # Get historical data with fallback to live price data
                     historical_data = historical_service.get_historical_data(db, current_coin.symbol, "1h", 30)
                     
-                    if not historical_data or len(historical_data) < 100:
-                        logger.warning(f"⚠️ Insufficient data for {current_coin.symbol} - skipping")
-                        continue
+                    if not historical_data or len(historical_data) < 20:
+                        # Fallback: get live price data from Bybit
+                        try:
+                            klines = bybit_client.get_klines(current_coin.symbol, interval="1", limit=100)
+                            if klines and len(klines) >= 20:
+                                historical_data = klines
+                                logger.info(f"📈 Using live Bybit data for {current_coin.symbol}: {len(klines)} points")
+                            else:
+                                logger.warning(f"⚠️ No data available for {current_coin.symbol} - skipping")
+                                continue
+                        except Exception as e:
+                            logger.warning(f"⚠️ Failed to get live data for {current_coin.symbol}: {e}")
+                            continue
+                    else:
+                        logger.debug(f"📊 Using stored data for {current_coin.symbol}: {len(historical_data)} points")
                     
                     training_time = min(60, max(10, len(historical_data) / 10))
                     training_progress = 0
@@ -416,6 +429,21 @@ async def apply_optimization(symbol: str, optimization_data: Dict, db: Session =
         logger.error(f"Error applying optimization: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/signals")
+async def get_trading_signals(db: Session = Depends(get_db)):
+    """Get autonomous trading signals from AI advisor"""
+    try:
+        signals = ai_advisor.get_autonomous_trading_signals(db)
+        return {
+            "success": True,
+            "signals": signals,
+            "total_signals": len(signals),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting trading signals: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/trading/manual")
 async def execute_manual_trade(trade_data: Dict, db: Session = Depends(get_db)):
     """Execute manual trade with specified parameters"""
@@ -493,7 +521,8 @@ async def deployment_test():
             "/price/{symbol}",
             "/optimize/status",
             "/optimize/queue", 
-            "/optimize/apply/{symbol}"
+            "/optimize/apply/{symbol}",
+            "/signals"
         ]
     }
 
