@@ -38,4 +38,3 @@ src/assets/
 vite.config.js
 index.html
 public/vite.svg
-package-lock.json
