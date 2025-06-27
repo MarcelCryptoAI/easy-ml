@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import openai
+from openai import OpenAI
 import os
 import json
 import logging
@@ -17,7 +17,7 @@ class AITradingAdvisor:
     """AI-powered trading advisor that analyzes ML predictions and provides autonomous recommendations"""
     
     def __init__(self):
-        openai.api_key = os.getenv("OPENAI_API_KEY")
+        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.model_types = [
             "lstm", "random_forest", "svm", "neural_network", 
             "xgboost", "lightgbm", "catboost", "transformer", 
@@ -144,7 +144,7 @@ class AITradingAdvisor:
             Keep it professional and actionable for autonomous trading.
             """
             
-            response = openai.ChatCompletion.create(
+            response = self.client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=150,
@@ -212,7 +212,7 @@ class AITradingAdvisor:
             Focus on risk-adjusted returns and consistent performance.
             """
             
-            response = openai.ChatCompletion.create(
+            response = self.client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=300,

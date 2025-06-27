@@ -1,4 +1,4 @@
-import openai
+from openai import OpenAI
 import logging
 import json
 from typing import Dict, List
@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 class OpenAIOptimizer:
     def __init__(self):
-        openai.api_key = settings.openai_api_key
-        self.client = openai.OpenAI(api_key=settings.openai_api_key)
+        self.client = OpenAI(api_key=settings.openai_api_key)
     
     def analyze_performance(self, symbol: str, days: int = 7) -> Dict:
         db = SessionLocal()

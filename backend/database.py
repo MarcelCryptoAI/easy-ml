@@ -26,11 +26,11 @@ if not database_url:
 engine = create_engine(
     database_url,
     echo=False,
-    pool_size=20,
-    max_overflow=30,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    pool_timeout=60
+    pool_size=50,
+    max_overflow=100,
+    pool_timeout=120,  # Increase timeout
+    pool_recycle=3600, # Recycle connections every hour
+    pool_pre_ping=True
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -53,6 +53,20 @@ class MLPrediction(Base):
     confidence = Column(Float)
     prediction = Column(String)  # buy, sell, hold
     features = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class HistoricalData(Base):
+    __tablename__ = "historical_data"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    coin_symbol = Column(String, nullable=False, index=True)
+    timestamp = Column(DateTime, nullable=False, index=True)
+    open_price = Column(Float, nullable=False)
+    high_price = Column(Float, nullable=False)
+    low_price = Column(Float, nullable=False)
+    close_price = Column(Float, nullable=False)
+    volume = Column(Float, nullable=False)
+    timeframe = Column(String, default="1h")  # 1h, 4h, 1d etc
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Trade(Base):

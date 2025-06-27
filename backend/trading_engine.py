@@ -17,14 +17,86 @@ class TradingEngine:
         self.websocket_manager = websocket_manager
         self.enabled = False
         self.max_positions = settings.max_positions
+        self.auto_start_trading = True  # Auto-enable trading on startup
+        self.min_balance_required = 10.0  # Minimum USDT balance to start trading
+        self.max_daily_loss_percentage = 5.0  # Stop trading if daily loss exceeds 5%
+        self.daily_loss_tracker = 0.0
+        self.trade_count_today = 0
+        self.last_reset_date = datetime.utcnow().date()
         
     def set_enabled(self, enabled: bool):
         self.enabled = enabled
         logger.info(f"Trading engine {'enabled' if enabled else 'disabled'}")
     
+    async def auto_startup_check(self):
+        """Automatically enable trading if conditions are met"""
+        if not self.auto_start_trading:
+            return
+            
+        try:
+            # Check if we have sufficient balance
+            balance = self._get_available_balance()
+            if balance < self.min_balance_required:
+                logger.warning(f"Insufficient balance for auto-trading: {balance} USDT (min: {self.min_balance_required})")
+                return
+            
+            # Check if Bybit connection is working
+            symbols = self.bybit_client.get_derivatives_symbols()
+            if not symbols or len(symbols) == 0:
+                logger.warning("Bybit connection failed, cannot auto-start trading")
+                return
+            
+            # Check if we haven't exceeded daily loss limit
+            if self.daily_loss_tracker >= self.max_daily_loss_percentage:
+                logger.warning(f"Daily loss limit exceeded: {self.daily_loss_tracker}%, trading disabled")
+                return
+            
+            # All checks passed - enable trading
+            self.enabled = True
+            logger.info(f"🚀 AUTO-TRADING ENABLED! Balance: {balance} USDT, Symbols: {len(symbols)}")
+            
+        except Exception as e:
+            logger.error(f"Error in auto-startup check: {e}")
+    
+    def reset_daily_stats(self):
+        """Reset daily statistics if it's a new day"""
+        current_date = datetime.utcnow().date()
+        if current_date != self.last_reset_date:
+            self.daily_loss_tracker = 0.0
+            self.trade_count_today = 0
+            self.last_reset_date = current_date
+            logger.info(f"📅 Daily stats reset for {current_date}")
+    
+    def check_risk_limits(self) -> bool:
+        """Check if trading should continue based on risk limits"""
+        self.reset_daily_stats()
+        
+        # Check daily loss limit
+        if self.daily_loss_tracker >= self.max_daily_loss_percentage:
+            logger.warning(f"🛑 Daily loss limit exceeded: {self.daily_loss_tracker}%")
+            self.enabled = False
+            return False
+        
+        # Check balance
+        balance = self._get_available_balance()
+        if balance < self.min_balance_required:
+            logger.warning(f"🛑 Balance too low: {balance} USDT (min: {self.min_balance_required})")
+            self.enabled = False
+            return False
+        
+        return True
+    
     async def process_trading_signals(self):
+        # Auto-startup check on first run
+        await self.auto_startup_check()
+        
         while True:
             try:
+                # Check risk limits before processing
+                if not self.check_risk_limits():
+                    await asyncio.sleep(30)
+                    continue
+                    
                 if not self.enabled:
                     await asyncio.sleep(10)
                     continue
@@ -101,40 +173,70 @@ class TradingEngine:
         return any(pos["symbol"] == symbol for pos in positions)
     
     def _evaluate_predictions(self, predictions: List[MLPrediction], strategy: TradingStrategy) -> Dict:
+        """Enhanced prediction evaluation with configurable model agreement"""
         buy_signals = 0
         sell_signals = 0
+        hold_signals = 0
         total_confidence = 0
+        valid_predictions = 0
+        
+        # Get strategy parameters with defaults
+        min_models_required = getattr(strategy, 'min_models_required', 7)
+        confidence_threshold = getattr(strategy, 'confidence_threshold', 80.0)
         
         for prediction in predictions:
-            if prediction.confidence >= strategy.confidence_threshold:
+            if prediction.confidence >= confidence_threshold:
+                valid_predictions += 1
                 if prediction.prediction == "buy":
                     buy_signals += 1
                 elif prediction.prediction == "sell":
                     sell_signals += 1
+                else:
+                    hold_signals += 1
                 total_confidence += prediction.confidence
         
-        if buy_signals >= 3:
+        # Check if we have enough total models and enough agreeing models
+        total_models = len(predictions)
+        if total_models < min_models_required:
+            logger.debug(f"Not enough models: {total_models} < {min_models_required}")
+            return None
+        
+        avg_confidence = total_confidence / valid_predictions if valid_predictions > 0 else 0
+        
+        # Require majority agreement (at least 60% of valid predictions)
+        required_agreement = max(3, int(valid_predictions * 0.6))
+        
+        if buy_signals >= required_agreement and buy_signals >= min_models_required:
             return {
                 "side": "buy",
-                "confidence": total_confidence / len(predictions)
+                "confidence": avg_confidence,
+                "models_agreed": buy_signals,
+                "total_models": total_models,
+                "valid_models": valid_predictions
             }
-        elif sell_signals >= 3:
+        elif sell_signals >= required_agreement and sell_signals >= min_models_required:
             return {
                 "side": "sell", 
-                "confidence": total_confidence / len(predictions)
+                "confidence": avg_confidence,
+                "models_agreed": sell_signals,
+                "total_models": total_models,
+                "valid_models": valid_predictions
             }
         
         return None
     
     async def _execute_trade(self, db: Session, symbol: str, signal: Dict, strategy: TradingStrategy):
+        """Enhanced trade execution with detailed logging and error handling"""
         try:
+            # Get current price
             klines = self.bybit_client.get_klines(symbol, limit=1)
             if not klines:
-                logger.error(f"No price data for {symbol}")
+                logger.error(f"❌ No price data for {symbol}")
                 return
             
-            current_price = klines[-1]["close"]
+            current_price = float(klines[-1]["close"])
             
+            # Calculate TP/SL prices
             if signal["side"] == "buy":
                 take_profit_price = current_price * (1 + strategy.take_profit_percentage / 100)
                 stop_loss_price = current_price * (1 - strategy.stop_loss_percentage / 100)
@@ -142,8 +244,20 @@ class TradingEngine:
                 take_profit_price = current_price * (1 - strategy.take_profit_percentage / 100)
                 stop_loss_price = current_price * (1 + strategy.stop_loss_percentage / 100)
             
+            # Calculate position size
             position_size = self._calculate_position_size(current_price, strategy)
+            if position_size <= 0:
+                logger.warning(f"⚠️ Invalid position size for {symbol}: {position_size}")
+                return
             
+            # Log trade attempt
+            logger.info(f"🎯 TRADE SIGNAL: {symbol} {signal['side'].upper()}")
+            logger.info(f"   💰 Price: ${current_price:.4f}")
+            logger.info(f"   📊 Models: {signal.get('models_agreed', '?')}/{signal.get('total_models', '?')} ({signal['confidence']:.1f}%)")
+            logger.info(f"   📏 Size: {position_size:.6f} ({strategy.leverage}x leverage)")
+            logger.info(f"   🎯 TP: ${take_profit_price:.4f} | SL: ${stop_loss_price:.4f}")
+            
+            # Execute the order
             order_result = self.bybit_client.place_order(
                 symbol=symbol,
                 side=signal["side"],
@@ -153,10 +267,11 @@ class TradingEngine:
                 stop_loss=stop_loss_price
             )
             
-            if order_result["success"]:
+            if order_result and order_result.get("success"):
+                # Create trade record
                 trade = Trade(
                     coin_symbol=symbol,
-                    order_id=order_result["order_id"],
+                    order_id=order_result.get("order_id", ""),
                     side=signal["side"],
                     size=position_size,
                     price=current_price,
@@ -168,25 +283,38 @@ class TradingEngine:
                     strategy_params={
                         "take_profit_percentage": strategy.take_profit_percentage,
                         "stop_loss_percentage": strategy.stop_loss_percentage,
-                        "leverage": strategy.leverage
+                        "leverage": strategy.leverage,
+                        "models_agreed": signal.get("models_agreed", 0),
+                        "total_models": signal.get("total_models", 0)
                     }
                 )
                 
                 db.add(trade)
                 db.commit()
                 
+                # Update trade counter
+                self.trade_count_today += 1
+                
+                # Broadcast update
                 await self.websocket_manager.broadcast_trade_update({
                     "action": "opened",
                     "symbol": symbol,
                     "side": signal["side"],
                     "price": current_price,
-                    "confidence": signal["confidence"]
+                    "confidence": signal["confidence"],
+                    "models_agreed": signal.get("models_agreed", 0),
+                    "total_models": signal.get("total_models", 0),
+                    "order_id": order_result.get("order_id", "")
                 })
                 
-                logger.info(f"Trade executed: {symbol} {signal['side']} at {current_price}")
+                logger.info(f"✅ TRADE EXECUTED: {symbol} {signal['side'].upper()} | Order ID: {order_result.get('order_id', 'Unknown')}")
+                
+            else:
+                error_msg = order_result.get("error", "Unknown error") if order_result else "No response from exchange"
+                logger.error(f"❌ TRADE FAILED: {symbol} - {error_msg}")
             
         except Exception as e:
-            logger.error(f"Error executing trade for {symbol}: {e}")
+            logger.error(f"❌ Error executing trade for {symbol}: {e}")
     
     def _get_available_balance(self) -> float:
         """Get available USDT balance from Bybit Unified Trading Account (UTA)"""

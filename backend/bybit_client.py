@@ -66,7 +66,8 @@ class BybitClient:
             return []
     
     def place_order(self, symbol: str, side: str, qty: float, leverage: int, 
-                   take_profit: Optional[float] = None, stop_loss: Optional[float] = None) -> Dict:
+                   take_profit: Optional[float] = None, stop_loss: Optional[float] = None,
+                   order_type: str = "market", price: Optional[float] = None) -> Dict:
         try:
             # Try to set leverage but ignore if already set
             try:
@@ -86,10 +87,14 @@ class BybitClient:
                 "category": "linear",
                 "symbol": symbol,
                 "side": side.capitalize(),
-                "orderType": "Market",
+                "orderType": "Market" if order_type.lower() == "market" else "Limit",
                 "qty": str(qty),
-                "timeInForce": "IOC"
+                "timeInForce": "IOC" if order_type.lower() == "market" else "GTC"
             }
+            
+            # Add price for limit orders
+            if order_type.lower() == "limit" and price:
+                order_params["price"] = str(price)
             
             if take_profit:
                 order_params["takeProfit"] = str(take_profit)
