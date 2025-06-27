@@ -305,9 +305,9 @@ async def get_predictions(symbol: str, db: Session = Depends(get_db)):
     finally:
         db.close()
 
-# CRITICAL NEW ENDPOINTS
 @app.get("/training-info")
 async def get_training_info(db: Session = Depends(get_db)):
+    """Get current ML training information with REAL data"""
     try:
         total_coins = db.query(Coin).filter(Coin.is_active == True).count()
         model_types = ["lstm", "random_forest", "svm", "neural_network", "xgboost", "lightgbm", "catboost", "transformer", "gru", "cnn_1d"]
@@ -336,6 +336,7 @@ async def get_training_info(db: Session = Depends(get_db)):
 
 @app.get("/trading/status")
 async def get_account_balance():
+    """Get account balance and trading status"""
     try:
         balance = trading_engine._get_available_balance()
         positions = bybit_client.get_positions()
@@ -352,6 +353,7 @@ async def get_account_balance():
 
 @app.get("/price/{symbol}")
 async def get_current_price(symbol: str):
+    """Get current price and market data for a symbol"""
     try:
         klines = bybit_client.get_klines(symbol, interval="1", limit=2)
         if not klines:
@@ -365,19 +367,107 @@ async def get_current_price(symbol: str):
 
 @app.get("/optimize/status")
 async def get_optimization_status():
-    return {
-        "is_running": False,
-        "total_coins": 0,
-        "completed_coins": 0,
-        "current_coin": "",
-        "session_start_time": datetime.utcnow().isoformat(),
-        "estimated_completion_time": datetime.utcnow().isoformat(),
-        "auto_apply_optimizations": True
-    }
+    """Get current optimization session status"""
+    try:
+        return {
+            "is_running": False,
+            "total_coins": 0,
+            "completed_coins": 0,
+            "current_coin": "",
+            "session_start_time": datetime.utcnow().isoformat(),
+            "estimated_completion_time": datetime.utcnow().isoformat(),
+            "auto_apply_optimizations": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/optimize/queue")
 async def get_optimization_queue():
-    return []
+    """Get current optimization queue"""
+    try:
+        return []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/optimize/apply/{symbol}")
+async def apply_optimization(symbol: str, optimization_data: Dict, db: Session = Depends(get_db)):
+    """Apply optimized parameters to a trading strategy"""
+    try:
+        strategy = db.query(TradingStrategy).filter(
+            TradingStrategy.coin_symbol == symbol,
+            TradingStrategy.is_active == True
+        ).first()
+        
+        if not strategy:
+            strategy = TradingStrategy(coin_symbol=symbol, is_active=True)
+            db.add(strategy)
+        
+        strategy.take_profit_percentage = optimization_data.get("take_profit_percentage", 2.0)
+        strategy.stop_loss_percentage = optimization_data.get("stop_loss_percentage", 1.0)
+        strategy.leverage = optimization_data.get("leverage", 10)
+        strategy.updated_by_ai = True
+        strategy.ai_optimization_reason = optimization_data.get("reason", "AI optimization applied")
+        strategy.updated_at = datetime.utcnow()
+        
+        db.commit()
+        
+        return {"success": True, "message": f"Optimization applied to {symbol}"}
+    except Exception as e:
+        logger.error(f"Error applying optimization: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/trading/manual")
+async def execute_manual_trade(trade_data: Dict, db: Session = Depends(get_db)):
+    """Execute manual trade with specified parameters"""
+    try:
+        required_fields = ['coin_symbol', 'side', 'amount_percentage', 'leverage']
+        for field in required_fields:
+            if field not in trade_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        coin_symbol = trade_data['coin_symbol']
+        side = trade_data['side']
+        amount_percentage = trade_data['amount_percentage']
+        leverage = trade_data['leverage']
+        
+        # Get current price
+        klines = bybit_client.get_klines(coin_symbol, limit=1)
+        if not klines:
+            raise HTTPException(status_code=400, detail=f"Unable to get current price for {coin_symbol}")
+        current_price = float(klines[-1]["close"])
+        
+        # Get available balance
+        balance = trading_engine._get_available_balance()
+        if balance < 1:
+            raise HTTPException(status_code=400, detail="Insufficient balance for trading")
+        
+        # Calculate position size
+        trade_amount = (balance * amount_percentage) / 100
+        position_size = trade_amount / current_price
+        
+        if position_size < 0.001:
+            raise HTTPException(status_code=400, detail="Position size too small")
+        
+        logger.info(f"🎯 MANUAL TRADE: {coin_symbol} {side.upper()}")
+        logger.info(f"   💰 Amount: {trade_amount:.2f} USDT ({amount_percentage}%)")
+        logger.info(f"   📏 Size: {position_size:.6f} ({leverage}x)")
+        
+        # Simulate trade execution for now
+        return {
+            "success": True,
+            "message": f"Manual {side.upper()} order simulated",
+            "trade_details": {
+                "coin_symbol": coin_symbol,
+                "side": side,
+                "amount": trade_amount,
+                "position_size": position_size,
+                "current_price": current_price,
+                "leverage": leverage
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error in manual trade execution: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -388,6 +478,24 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket_manager.send_personal_message(f"Echo: {data}", websocket)
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
+
+# Quick deployment test endpoint
+@app.get("/deployment-test")
+async def deployment_test():
+    return {
+        "message": "✅ Clean deployment with all endpoints!", 
+        "timestamp": datetime.utcnow().isoformat(), 
+        "version": "v2.1",
+        "endpoints": [
+            "/training-info", 
+            "/trading/status", 
+            "/trading/manual",
+            "/price/{symbol}",
+            "/optimize/status",
+            "/optimize/queue", 
+            "/optimize/apply/{symbol}"
+        ]
+    }
 
 if __name__ == "__main__":
     import uvicorn
