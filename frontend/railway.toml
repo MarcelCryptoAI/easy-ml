@@ -1,11 +1,9 @@
 [build]
-command = "npm run build"
+builder = "nixpacks"
 
 [deploy]
-startCommand = "npm start"
+startCommand = "npm start" 
+healthcheckPath = "/"
 
-[build.env]
-NODE_ENV = "production"
-
-[env]
+[variables]
 NEXT_PUBLIC_BACKEND_URL = "https://easy-ml-production.up.railway.app"
