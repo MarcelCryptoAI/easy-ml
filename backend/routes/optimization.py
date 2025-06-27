@@ -4,7 +4,7 @@ from typing import Dict, List
 from datetime import datetime
 import logging
 
-from ..database import get_db, TradingStrategy
+from database import get_db, TradingStrategy
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/optimize", tags=["optimization"])

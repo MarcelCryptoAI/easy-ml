@@ -5,8 +5,8 @@ from typing import Dict, List
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
-from .config import settings
-from .database import SessionLocal, Trade, TradingStrategy, MLPrediction
+from config import settings
+from database import SessionLocal, Trade, TradingStrategy, MLPrediction
 
 logger = logging.getLogger(__name__)
 

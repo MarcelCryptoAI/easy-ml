@@ -2,7 +2,7 @@ from pybit.unified_trading import HTTP
 from typing import List, Dict, Optional
 import asyncio
 import logging
-from .config import settings
+from config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from typing import Dict
 import logging
 
-from ..database import get_db
-from ..bybit_client import BybitClient
-from ..trading_engine import TradingEngine
+from database import get_db
+from bybit_client import BybitClient
+from trading_engine import TradingEngine
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/trading", tags=["trading"])

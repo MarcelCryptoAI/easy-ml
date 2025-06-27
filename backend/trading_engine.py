@@ -4,10 +4,10 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from typing import Dict, List
 
-from .database import SessionLocal, MLPrediction, Trade, TradingStrategy
-from .bybit_client import BybitClient
-from .websocket_manager import WebSocketManager
-from .config import settings
+from database import SessionLocal, MLPrediction, Trade, TradingStrategy
+from bybit_client import BybitClient
+from websocket_manager import WebSocketManager
+from config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 import os
-from .config import settings
+from config import settings
 
 # Try to get database URL from Railway or environment
 database_url = (

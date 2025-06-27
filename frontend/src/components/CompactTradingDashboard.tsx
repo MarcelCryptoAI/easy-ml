@@ -16,7 +16,12 @@ import {
   Alert,
   LinearProgress,
   TextField,
-  InputAdornment
+  InputAdornment,
+  Pagination,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { Refresh, Search, TrendingUp, TrendingDown, TrendingFlat } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
@@ -43,6 +48,8 @@ export const CompactTradingDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('confidence');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   // Get all coins data
   const { data: coins = [], refetch: refetchCoins } = useQuery({
@@ -104,6 +111,17 @@ export const CompactTradingDashboard: React.FC = () => {
       }
     });
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, itemsPerPage]);
+
   const handleSort = (field: SortField) => {
     if (field === sortField) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -154,21 +172,43 @@ export const CompactTradingDashboard: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Search */}
-      <TextField
-        size="small"
-        placeholder="Search coins..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <Search />
-            </InputAdornment>
-          ),
-        }}
-        sx={{ mb: 2, width: 300 }}
-      />
+      {/* Search and Pagination Controls */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <TextField
+          size="small"
+          placeholder="Search coins..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ width: 300 }}
+        />
+        
+        <Box display="flex" alignItems="center" gap={2}>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Per Page</InputLabel>
+            <Select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(e.target.value as number)}
+              label="Per Page"
+            >
+              <MenuItem value={25}>25</MenuItem>
+              <MenuItem value={50}>50</MenuItem>
+              <MenuItem value={100}>100</MenuItem>
+              <MenuItem value={filteredData.length}>All ({filteredData.length})</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <Typography variant="body2" color="textSecondary">
+            {startIndex + 1}-{Math.min(endIndex, filteredData.length)} of {filteredData.length}
+          </Typography>
+        </Box>
+      </Box>
 
       {/* Stats Bar */}
       <Box display="flex" gap={2} mb={2}>
@@ -254,7 +294,7 @@ export const CompactTradingDashboard: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredData.map((coin) => (
+              {paginatedData.map((coin) => (
                 <TableRow 
                   key={coin.coin_symbol}
                   hover
@@ -318,9 +358,9 @@ export const CompactTradingDashboard: React.FC = () => {
                   
                   <TableCell>
                     <Box display="flex" gap={0.5}>
-                      <Chip label={`↗${coin.consensus_breakdown.buy}`} color="success" size="small" variant="outlined" />
-                      <Chip label={`↘${coin.consensus_breakdown.sell}`} color="error" size="small" variant="outlined" />
-                      <Chip label={`↔${coin.consensus_breakdown.hold}`} color="default" size="small" variant="outlined" />
+                      <Chip label={`↗${coin.consensus_breakdown?.buy || 0}`} color="success" size="small" variant="outlined" />
+                      <Chip label={`↘${coin.consensus_breakdown?.sell || 0}`} color="error" size="small" variant="outlined" />
+                      <Chip label={`↔${coin.consensus_breakdown?.hold || 0}`} color="default" size="small" variant="outlined" />
                     </Box>
                   </TableCell>
                   
@@ -339,6 +379,24 @@ export const CompactTradingDashboard: React.FC = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Box display="flex" justifyContent="center" alignItems="center" mt={2} gap={2}>
+          <Typography variant="body2" color="textSecondary">
+            Page {currentPage} of {totalPages}
+          </Typography>
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={(event, value) => setCurrentPage(value)}
+            color="primary"
+            size="medium"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
+      )}
 
       {/* No data message */}
       {!isLoading && filteredData.length === 0 && (

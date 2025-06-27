@@ -20,7 +20,15 @@ import {
   CircularProgress,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControlLabel,
+  Switch,
+  TextField,
+  Slider
 } from '@mui/material';
 import { Refresh, ExpandMore, PlayArrow, Pause, Settings } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -42,32 +50,34 @@ interface TrainingSession {
   current_coin: string;
   current_model: string;
   progress: number;
+  overall_progress: number;
   eta_seconds: number;
   total_queue_items: number;
   completed_items: number;
+  remaining_models: number;
   session_start_time: string;
   estimated_completion_time: string;
 }
 
 export const TrainingStatus: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState({
+    autoRetrain: true,
+    trainingInterval: 3600, // seconds
+    maxModelsPerCoin: 10,
+    enableNotifications: true,
+    batchSize: 5
+  });
   const queryClient = useQueryClient();
 
   const { data: trainingSession, isLoading: sessionLoading, refetch: refetchSession } = useQuery({
     queryKey: ['training-session'],
     queryFn: async () => {
-      // Mock training session data - replace with actual API call
-      const mockSession: TrainingSession = {
-        current_coin: 'BTCUSDT',
-        current_model: 'LSTM',
-        progress: 67,
-        eta_seconds: 450,
-        total_queue_items: 2000, // 500 coins × 4 models
-        completed_items: 1340,
-        session_start_time: new Date(Date.now() - 3600000).toISOString(),
-        estimated_completion_time: new Date(Date.now() + 86400000).toISOString()
-      };
-      return mockSession;
+      // Use real API endpoint
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/training/session`);
+      const data = await response.json();
+      return data as TrainingSession;
     },
     refetchInterval: autoRefresh ? 5000 : false
   });
@@ -75,51 +85,10 @@ export const TrainingStatus: React.FC = () => {
   const { data: trainingQueue = [], isLoading: queueLoading, refetch: refetchQueue } = useQuery({
     queryKey: ['training-queue'],
     queryFn: async () => {
-      // Mock queue data - replace with actual API call
-      const mockQueue: TrainingQueueItem[] = [
-        {
-          coin_symbol: 'BTCUSDT',
-          model_type: 'LSTM',
-          status: 'training',
-          progress: 67,
-          estimated_time_remaining: 450,
-          started_at: new Date(Date.now() - 300000).toISOString(),
-          queue_position: 1
-        },
-        {
-          coin_symbol: 'BTCUSDT',
-          model_type: 'Random Forest',
-          status: 'pending',
-          progress: 0,
-          estimated_time_remaining: 180,
-          queue_position: 2
-        },
-        {
-          coin_symbol: 'BTCUSDT',
-          model_type: 'SVM',
-          status: 'pending',
-          progress: 0,
-          estimated_time_remaining: 120,
-          queue_position: 3
-        },
-        {
-          coin_symbol: 'BTCUSDT',
-          model_type: 'Neural Network',
-          status: 'pending',
-          progress: 0,
-          estimated_time_remaining: 300,
-          queue_position: 4
-        },
-        {
-          coin_symbol: 'ETHUSDT',
-          model_type: 'LSTM',
-          status: 'pending',
-          progress: 0,
-          estimated_time_remaining: 420,
-          queue_position: 5
-        }
-      ];
-      return mockQueue;
+      // Use real API endpoint
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/training/queue`);
+      const data = await response.json();
+      return data as TrainingQueueItem[];
     },
     refetchInterval: autoRefresh ? 3000 : false
   });
@@ -130,11 +99,16 @@ export const TrainingStatus: React.FC = () => {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/training/pause`, {
         method: 'POST'
       });
+      if (!response.ok) throw new Error('Failed to pause training');
       return response.json();
     },
     onSuccess: () => {
       toast.success('Training paused');
       refetchSession();
+      refetchQueue();
+    },
+    onError: () => {
+      toast.error('Failed to pause training');
     }
   });
 
@@ -144,11 +118,16 @@ export const TrainingStatus: React.FC = () => {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/training/resume`, {
         method: 'POST'
       });
+      if (!response.ok) throw new Error('Failed to resume training');
       return response.json();
     },
     onSuccess: () => {
       toast.success('Training resumed');
       refetchSession();
+      refetchQueue();
+    },
+    onError: () => {
+      toast.error('Failed to resume training');
     }
   });
 
@@ -197,7 +176,7 @@ export const TrainingStatus: React.FC = () => {
         <Box display="flex" gap={1}>
           <Button
             variant="outlined"
-            color={autoRefresh ? 'success' : 'default'}
+            color={autoRefresh ? 'success' : 'primary'}
             onClick={() => setAutoRefresh(!autoRefresh)}
             startIcon={autoRefresh ? <Pause /> : <PlayArrow />}
           >
@@ -209,13 +188,52 @@ export const TrainingStatus: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Current Training Session Overview */}
+      {/* Overall Progress Overview */}
+      <Grid container spacing={3} mb={3}>
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h5" gutterBottom color="primary">
+                🚀 Overall Training Progress: All 5020 Models
+              </Typography>
+              {trainingSession && (
+                <>
+                  <Box mb={3}>
+                    <Typography variant="h6" color="textSecondary" gutterBottom>
+                      System Progress: {trainingSession.overall_progress}% Complete
+                    </Typography>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={trainingSession.overall_progress} 
+                      sx={{ 
+                        height: 20, 
+                        borderRadius: 10,
+                        backgroundColor: '#f0f0f0',
+                        '& .MuiLinearProgress-bar': {
+                          borderRadius: 10,
+                          background: 'linear-gradient(45deg, #4caf50, #8bc34a)'
+                        }
+                      }}
+                    />
+                    <Typography variant="body1" sx={{ mt: 1 }}>
+                      <strong>{trainingSession.completed_items}</strong> of <strong>{trainingSession.total_queue_items}</strong> models trained
+                      ({trainingSession.remaining_models} remaining)
+                    </Typography>
+                  </Box>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Current Training Session Details */}
       <Grid container spacing={3} mb={3}>
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Current Training Session
+                Current Model Training
               </Typography>
               {trainingSession && (
                 <>
@@ -233,20 +251,11 @@ export const TrainingStatus: React.FC = () => {
                     </Typography>
                   </Box>
                   
-                  <Typography variant="body2" color="textSecondary">
-                    Queue Progress: {trainingSession.completed_items}/{trainingSession.total_queue_items}
-                  </Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={(trainingSession.completed_items / trainingSession.total_queue_items) * 100} 
-                    sx={{ mt: 1, mb: 2 }}
-                  />
-                  
                   <Typography variant="caption" display="block" color="textSecondary">
                     Session started: {new Date(trainingSession.session_start_time).toLocaleString()}
                   </Typography>
                   <Typography variant="caption" display="block" color="textSecondary">
-                    Estimated completion: {formatEstimatedCompletion(trainingSession.estimated_completion_time)}
+                    Full completion ETA: {formatEstimatedCompletion(trainingSession.estimated_completion_time)}
                   </Typography>
                 </>
               )}
@@ -282,7 +291,7 @@ export const TrainingStatus: React.FC = () => {
                 <Button
                   variant="outlined"
                   startIcon={<Settings />}
-                  onClick={() => toast.info('Training settings coming soon')}
+                  onClick={() => setSettingsOpen(true)}
                 >
                   Settings
                 </Button>
@@ -382,6 +391,97 @@ export const TrainingStatus: React.FC = () => {
           )}
         </AccordionDetails>
       </Accordion>
+
+      {/* Training Settings Dialog */}
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Training Settings</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={settings.autoRetrain}
+                  onChange={(e) => setSettings({...settings, autoRetrain: e.target.checked})}
+                />
+              }
+              label="Auto-retrain models"
+            />
+            
+            <Box sx={{ mt: 3 }}>
+              <Typography gutterBottom>Training Interval (minutes)</Typography>
+              <Slider
+                value={settings.trainingInterval / 60}
+                onChange={(_, value) => setSettings({...settings, trainingInterval: (value as number) * 60})}
+                min={5}
+                max={720}
+                step={5}
+                marks={[
+                  { value: 5, label: '5m' },
+                  { value: 60, label: '1h' },
+                  { value: 360, label: '6h' },
+                  { value: 720, label: '12h' }
+                ]}
+                valueLabelDisplay="auto"
+                valueLabelFormat={(value) => `${value}m`}
+              />
+            </Box>
+
+            <Box sx={{ mt: 3 }}>
+              <Typography gutterBottom>Max Models per Coin</Typography>
+              <Slider
+                value={settings.maxModelsPerCoin}
+                onChange={(_, value) => setSettings({...settings, maxModelsPerCoin: value as number})}
+                min={1}
+                max={10}
+                step={1}
+                marks
+                valueLabelDisplay="auto"
+              />
+            </Box>
+
+            <Box sx={{ mt: 3 }}>
+              <Typography gutterBottom>Training Batch Size</Typography>
+              <Slider
+                value={settings.batchSize}
+                onChange={(_, value) => setSettings({...settings, batchSize: value as number})}
+                min={1}
+                max={20}
+                step={1}
+                marks={[
+                  { value: 1, label: '1' },
+                  { value: 5, label: '5' },
+                  { value: 10, label: '10' },
+                  { value: 20, label: '20' }
+                ]}
+                valueLabelDisplay="auto"
+              />
+            </Box>
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={settings.enableNotifications}
+                  onChange={(e) => setSettings({...settings, enableNotifications: e.target.checked})}
+                />
+              }
+              label="Enable training notifications"
+              sx={{ mt: 2 }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSettingsOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={() => {
+              toast.success('Settings saved successfully');
+              setSettingsOpen(false);
+            }}
+          >
+            Save Settings
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

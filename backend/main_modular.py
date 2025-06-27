@@ -7,18 +7,18 @@ import logging
 import os
 from datetime import datetime, timedelta
 
-from .database import get_db, create_tables, Coin, MLPrediction, Trade, TradingStrategy, HistoricalData
-from .bybit_client import BybitClient
-from .trading_engine import TradingEngine
-from .websocket_manager import WebSocketManager
-from .openai_optimizer import OpenAIOptimizer
-from .startup_tasks import initialize_database, validate_configuration
-from .backtest_engine import BacktestEngine
-from .ai_trading_advisor import AITradingAdvisor
-from .historical_data_service import historical_service
+from database import get_db, create_tables, Coin, MLPrediction, Trade, TradingStrategy, HistoricalData
+from bybit_client import BybitClient
+from trading_engine import TradingEngine
+from websocket_manager import WebSocketManager
+from openai_optimizer import OpenAIOptimizer
+from startup_tasks import initialize_database, validate_configuration
+from backtest_engine import BacktestEngine
+from ai_trading_advisor import AITradingAdvisor
+from historical_data_service import historical_service
 
 # Import route modules
-from .routes import training, trading, optimization
+from routes import training, trading, optimization
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

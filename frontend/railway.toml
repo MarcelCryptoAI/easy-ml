@@ -2,8 +2,9 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "npm start" 
+startCommand = "npm start"
 healthcheckPath = "/"
+watchPatterns = ["/frontend/**"]
 
 [variables]
 NEXT_PUBLIC_BACKEND_URL = "https://easy-ml-production.up.railway.app"

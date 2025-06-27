@@ -1,9 +1,9 @@
 import asyncio
 import logging
 from sqlalchemy.orm import Session
-from .database import SessionLocal, create_tables, Coin, TradingStrategy
-from .bybit_client import BybitClient
-from .config import settings
+from database import SessionLocal, create_tables, Coin, TradingStrategy
+from bybit_client import BybitClient
+from config import settings
 
 logger = logging.getLogger(__name__)
 

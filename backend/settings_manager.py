@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import Dict, List
 from pydantic import BaseModel
 
-from .database import get_db, TradingStrategy
-from .config import settings
+from database import get_db, TradingStrategy
+from config import settings
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 

@@ -3,8 +3,8 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import logging
-from .bybit_client import BybitClient
-from .config import settings
+from bybit_client import BybitClient
+from config import settings
 
 logger = logging.getLogger(__name__)
 

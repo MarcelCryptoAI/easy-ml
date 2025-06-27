@@ -46,13 +46,25 @@ interface OptimizationJob {
   coin_symbol: string;
   status: 'pending' | 'running' | 'completed' | 'error';
   progress: number;
-  current_strategy: any;
-  optimized_strategy: any;
-  improvement: {
-    return_improvement: number;
-    drawdown_reduction: number;
-    sharpe_improvement: number;
+  current_params: {
+    take_profit_percentage: number;
+    stop_loss_percentage: number;
+    leverage: number;
   };
+  optimized_params?: {
+    take_profit_percentage: number;
+    stop_loss_percentage: number;
+    leverage: number;
+  };
+  backtest_results?: {
+    total_return: number;
+    win_rate: number;
+    max_drawdown: number;
+    sharpe_ratio: number;
+    total_trades: number;
+    profit_factor: number;
+  };
+  improvement_percentage?: number;
   started_at?: string;
   completed_at?: string;
   queue_position: number;
@@ -87,17 +99,9 @@ export const StrategyOptimizer: React.FC = () => {
   const { data: optimizationSession, refetch: refetchSession } = useQuery({
     queryKey: ['optimization-session'],
     queryFn: async () => {
-      // Mock data - replace with actual API
-      const mockSession: OptimizationSession = {
-        is_running: false,
-        total_coins: 500,
-        completed_coins: 0,
-        current_coin: '',
-        session_start_time: '',
-        estimated_completion_time: '',
-        auto_apply_optimizations: true
-      };
-      return mockSession;
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/optimize/status`);
+      if (!response.ok) throw new Error('Failed to fetch optimization session');
+      return await response.json() as OptimizationSession;
     },
     refetchInterval: 5000
   });
@@ -105,9 +109,9 @@ export const StrategyOptimizer: React.FC = () => {
   const { data: optimizationQueue = [] } = useQuery({
     queryKey: ['optimization-queue'],
     queryFn: async () => {
-      // Mock data - replace with actual API
-      const mockQueue: OptimizationJob[] = [];
-      return mockQueue;
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/optimize/queue`);
+      if (!response.ok) throw new Error('Failed to fetch optimization queue');
+      return await response.json() as OptimizationJob[];
     },
     refetchInterval: 3000
   });
@@ -375,13 +379,13 @@ export const StrategyOptimizer: React.FC = () => {
                         </Box>
                       </TableCell>
                       <TableCell>
-                        {job.improvement && (
+                        {job.improvement_percentage && (
                           <Box display="flex" gap={0.5}>
                             <Chip
-                              label={`+${job.improvement.return_improvement.toFixed(1)}%`}
-                              color="success"
+                              label={`${job.improvement_percentage > 0 ? '+' : ''}${job.improvement_percentage.toFixed(1)}%`}
+                              color={job.improvement_percentage > 0 ? "success" : "error"}
                               size="small"
-                              icon={<TrendingUp />}
+                              icon={job.improvement_percentage > 0 ? <TrendingUp /> : <TrendingDown />}
                             />
                           </Box>
                         )}

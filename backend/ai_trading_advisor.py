@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import numpy as np
 
-from .database import MLPrediction, TradingStrategy, Coin
+from database import MLPrediction, TradingStrategy, Coin
 
 logger = logging.getLogger(__name__)
 

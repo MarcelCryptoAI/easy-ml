@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from typing import List, Dict
 from sqlalchemy.orm import Session
 import pandas as pd
-from .database import HistoricalData, Coin, get_db
-from .bybit_client import BybitClient
+from database import HistoricalData, Coin, get_db
+from bybit_client import BybitClient
 
 logger = logging.getLogger(__name__)
 

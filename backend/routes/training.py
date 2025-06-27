@@ -4,7 +4,7 @@ from typing import Dict
 from datetime import datetime
 import logging
 
-from ..database import get_db, Coin, MLPrediction
+from database import get_db, Coin, MLPrediction
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/training", tags=["training"])
