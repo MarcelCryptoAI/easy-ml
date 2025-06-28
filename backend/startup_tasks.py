@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, create_tables, Coin, TradingStrategy
 from bybit_client import BybitClient
 from config import settings
+from allowed_coins import ALLOWED_COINS
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,9 @@ async def initialize_database():
         coin_count = db.query(Coin).count()
         if coin_count == 0:
             await sync_initial_coins(db)
+        else:
+            # Clean up coins not in allowed list
+            await cleanup_disallowed_coins(db)
         
         # Ensure all coins have default strategies
         coins = db.query(Coin).filter(Coin.is_active == True).all()
@@ -66,6 +70,23 @@ async def sync_initial_coins(db: Session):
     
     db.commit()
     logger.info(f"Synced {len(symbols)} coins from Bybit")
+
+async def cleanup_disallowed_coins(db: Session):
+    """Remove coins that are not in the allowed list"""
+    allowed_set = set(ALLOWED_COINS)
+    
+    # Get all coins not in allowed list
+    disallowed_coins = db.query(Coin).filter(~Coin.symbol.in_(ALLOWED_COINS)).all()
+    
+    if disallowed_coins:
+        for coin in disallowed_coins:
+            # Delete associated strategies first
+            db.query(TradingStrategy).filter(TradingStrategy.coin_symbol == coin.symbol).delete()
+            # Delete the coin
+            db.delete(coin)
+        
+        db.commit()
+        logger.info(f"Removed {len(disallowed_coins)} coins not in allowed list")
 
 def validate_configuration():
     """Validate that all required configuration is present"""

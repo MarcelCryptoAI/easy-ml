@@ -58,41 +58,31 @@ export const CompactTradingDashboard: React.FC = () => {
     refetchInterval: 30000
   });
 
-  // Get trading recommendations for all coins
+  // Get trading recommendations for all coins using batch endpoint
   const { data: dashboardData = [], isLoading, refetch } = useQuery({
     queryKey: ['compact-dashboard'],
     queryFn: async () => {
-      const coinDataPromises = coins.map(async (coin) => { // All coins, no limit
-        try {
-          const recommendation = await tradingApi.getRecommendation(coin.symbol);
-          const predictions = await tradingApi.getPredictions(coin.symbol);
-          
-          return {
-            coin_symbol: coin.symbol,
-            recommendation: recommendation.recommendation,
-            confidence: recommendation.confidence,
-            avg_confidence: recommendation.avg_confidence,
-            models_trained: predictions.length,
-            last_trained: predictions[0]?.created_at || 'Never',
-            consensus_breakdown: recommendation.consensus_breakdown
-          };
-        } catch (error) {
-          return {
-            coin_symbol: coin.symbol,
-            recommendation: 'HOLD',
-            confidence: 0,
-            avg_confidence: 0,
-            models_trained: 0,
-            last_trained: 'Never',
-            consensus_breakdown: { buy: 0, sell: 0, hold: 0 }
-          };
+      try {
+        // Use the new batch endpoint to get all dashboard data in one request
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/dashboard/batch`
+        );
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
         }
-      });
-      
-      return Promise.all(coinDataPromises);
+        
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        // Return empty array on error
+        return [];
+      }
     },
     enabled: coins.length > 0,
-    refetchInterval: 60000 // Refresh every minute
+    refetchInterval: 60000, // Refresh every minute
+    staleTime: 30000 // Data is considered fresh for 30 seconds
   });
 
   // Filter and sort data

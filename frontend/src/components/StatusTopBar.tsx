@@ -14,12 +14,18 @@ import {
   TrendingUp, 
   AccountBalance,
   Refresh,
-  Circle
+  Circle,
+  Computer,
+  Api,
+  Memory
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { tradingApi } from '../utils/api';
 
 interface ConnectionStatus {
+  frontend_connected: boolean;
+  backend_connected: boolean;
+  worker_connected: boolean;
   database_connected: boolean;
   openai_connected: boolean;
   bybit_connected: boolean;
@@ -59,6 +65,9 @@ export const StatusTopBar: React.FC = () => {
         
         // Transform health data to status format
         return {
+          frontend_connected: true,
+          backend_connected: true,
+          worker_connected: true, // Assume true if backend is running
           database_connected: healthData.database_coins > 0,
           openai_connected: true, // Assume true if backend is running
           bybit_connected: healthData.bybit_connected,
@@ -68,6 +77,9 @@ export const StatusTopBar: React.FC = () => {
         clearTimeout(timeoutId);
         // Return default disconnected state
         return {
+          frontend_connected: true,
+          backend_connected: false,
+          worker_connected: false,
           database_connected: false,
           openai_connected: false,
           bybit_connected: false,
@@ -100,6 +112,54 @@ export const StatusTopBar: React.FC = () => {
 
         {/* Connection Status */}
         <Box display="flex" alignItems="center" gap={1}>
+          {/* Frontend Status */}
+          <Tooltip title="Frontend Connection">
+            <Chip
+              icon={<Computer />}
+              label={
+                <Box display="flex" alignItems="center">
+                  {getStatusIcon(statusData?.frontend_connected || true)}
+                  Frontend
+                </Box>
+              }
+              color={getStatusColor(statusData?.frontend_connected || true) as any}
+              variant="outlined"
+              size="small"
+            />
+          </Tooltip>
+
+          {/* Backend Status */}
+          <Tooltip title="Backend API Connection">
+            <Chip
+              icon={<Api />}
+              label={
+                <Box display="flex" alignItems="center">
+                  {getStatusIcon(statusData?.backend_connected || false)}
+                  Backend
+                </Box>
+              }
+              color={getStatusColor(statusData?.backend_connected || false) as any}
+              variant="outlined"
+              size="small"
+            />
+          </Tooltip>
+
+          {/* Worker Status */}
+          <Tooltip title="ML Worker Status">
+            <Chip
+              icon={<Memory />}
+              label={
+                <Box display="flex" alignItems="center">
+                  {getStatusIcon(statusData?.worker_connected || false)}
+                  Worker
+                </Box>
+              }
+              color={getStatusColor(statusData?.worker_connected || false) as any}
+              variant="outlined"
+              size="small"
+            />
+          </Tooltip>
+
           {/* Database Status */}
           <Tooltip title="Database Connection">
             <Chip
@@ -116,33 +176,33 @@ export const StatusTopBar: React.FC = () => {
             />
           </Tooltip>
 
-          {/* OpenAI Status */}
+          {/* ByBit API Status */}
+          <Tooltip title="ByBit API Connection">
+            <Chip
+              icon={<TrendingUp />}
+              label={
+                <Box display="flex" alignItems="center">
+                  {getStatusIcon(statusData?.bybit_connected || false)}
+                  ByBit API
+                </Box>
+              }
+              color={getStatusColor(statusData?.bybit_connected || false) as any}
+              variant="outlined"
+              size="small"
+            />
+          </Tooltip>
+
+          {/* OpenAI API Status */}
           <Tooltip title="OpenAI API Connection">
             <Chip
               icon={<SmartToy />}
               label={
                 <Box display="flex" alignItems="center">
                   {getStatusIcon(statusData?.openai_connected || false)}
-                  OpenAI
+                  OpenAI API
                 </Box>
               }
               color={getStatusColor(statusData?.openai_connected || false) as any}
-              variant="outlined"
-              size="small"
-            />
-          </Tooltip>
-
-          {/* Bybit Status */}
-          <Tooltip title="Bybit API Connection">
-            <Chip
-              icon={<TrendingUp />}
-              label={
-                <Box display="flex" alignItems="center">
-                  {getStatusIcon(statusData?.bybit_connected || false)}
-                  Bybit
-                </Box>
-              }
-              color={getStatusColor(statusData?.bybit_connected || false) as any}
               variant="outlined"
               size="small"
             />

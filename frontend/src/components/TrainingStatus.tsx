@@ -71,27 +71,54 @@ export const TrainingStatus: React.FC = () => {
   });
   const queryClient = useQueryClient();
 
-  const { data: trainingSession, isLoading: sessionLoading, refetch: refetchSession } = useQuery({
-    queryKey: ['training-session'],
-    queryFn: async () => {
-      // Use real API endpoint
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/training/session`);
-      const data = await response.json();
-      return data as TrainingSession;
-    },
-    refetchInterval: autoRefresh ? 5000 : false
+  // Use the optimized training-info endpoint for consistency
+  const { data: trainingInfo, isLoading: trainingLoading, refetch: refetchTraining } = useQuery({
+    queryKey: ['training-info'],
+    queryFn: () => tradingApi.getTrainingInfo(),
+    refetchInterval: autoRefresh ? 5000 : false,
+    staleTime: 2000 // Consider data fresh for 2 seconds
   });
 
-  const { data: trainingQueue = [], isLoading: queueLoading, refetch: refetchQueue } = useQuery({
-    queryKey: ['training-queue'],
+  // Get detailed statistics for better insights
+  const { data: trainingStats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
+    queryKey: ['training-statistics'],
     queryFn: async () => {
-      // Use real API endpoint
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/training/queue`);
-      const data = await response.json();
-      return data as TrainingQueueItem[];
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/training/statistics`);
+        if (!response.ok) throw new Error('Failed to fetch statistics');
+        return response.json();
+      } catch (error) {
+        console.error('Error fetching training statistics:', error);
+        return { model_statistics: [], top_coins: [], recent_activity: [] };
+      }
     },
-    refetchInterval: autoRefresh ? 3000 : false
+    refetchInterval: autoRefresh ? 10000 : false,
+    staleTime: 5000 // Statistics can be stale for longer
   });
+
+  // Transform training info to match expected interface for backward compatibility
+  const trainingSession = trainingInfo ? {
+    current_coin: trainingInfo.current_coin,
+    current_model: trainingInfo.current_model,
+    progress: trainingInfo.current_model_progress || 0,
+    status: trainingInfo.status,
+    total_coins: trainingInfo.total_coins,
+    completed_predictions: trainingInfo.completed_predictions,
+    overall_progress: trainingInfo.overall_percentage
+  } : null;
+
+  const trainingQueue = trainingStats?.recent_activity?.map((activity, index) => ({
+    coin_symbol: activity.coin_symbol,
+    model_type: activity.model_type,
+    status: 'completed' as const,
+    progress: 100,
+    estimated_time_remaining: 0,
+    completed_at: activity.created_at,
+    queue_position: index + 1
+  })) || [];
+
+  const sessionLoading = trainingLoading;
+  const queueLoading = statsLoading;
 
   const pauseTrainingMutation = useMutation({
     mutationFn: async () => {
@@ -104,8 +131,8 @@ export const TrainingStatus: React.FC = () => {
     },
     onSuccess: () => {
       toast.success('Training paused');
-      refetchSession();
-      refetchQueue();
+      refetchTraining();
+      refetchStats();
     },
     onError: () => {
       toast.error('Failed to pause training');
@@ -123,8 +150,8 @@ export const TrainingStatus: React.FC = () => {
     },
     onSuccess: () => {
       toast.success('Training resumed');
-      refetchSession();
-      refetchQueue();
+      refetchTraining();
+      refetchStats();
     },
     onError: () => {
       toast.error('Failed to resume training');
@@ -182,7 +209,7 @@ export const TrainingStatus: React.FC = () => {
           >
             {autoRefresh ? 'Auto' : 'Manual'}
           </Button>
-          <IconButton onClick={() => { refetchSession(); refetchQueue(); }}>
+          <IconButton onClick={() => { refetchTraining(); refetchStats(); }}>
             <Refresh />
           </IconButton>
         </Box>

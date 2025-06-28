@@ -14,7 +14,7 @@ from bybit_client import BybitClient
 from trading_engine import TradingEngine
 from websocket_manager import WebSocketManager
 from openai_optimizer import OpenAIOptimizer
-from startup_tasks import initialize_database, validate_configuration
+from startup_tasks import initialize_database, validate_configuration, cleanup_disallowed_coins
 from backtest_engine import BacktestEngine
 from ai_trading_advisor import AITradingAdvisor
 from historical_data_service import historical_service
@@ -54,6 +54,11 @@ async def sync_coins_task():
     while True:
         try:
             db = next(get_db())
+            
+            # Clean up disallowed coins first
+            await cleanup_disallowed_coins(db)
+            
+            # Get allowed symbols from Bybit
             symbols = bybit_client.get_derivatives_symbols()
             
             for symbol_data in symbols:
@@ -67,7 +72,7 @@ async def sync_coins_task():
             
             db.commit()
             db.close()
-            logger.info(f"Synced {len(symbols)} coins")
+            logger.info(f"Synced {len(symbols)} allowed coins")
             
         except Exception as e:
             logger.error(f"Error in sync_coins_task: {e}")
@@ -247,17 +252,23 @@ async def health_check(db: Session = Depends(get_db)):
 
 @app.get("/status")
 async def get_system_status(db: Session = Depends(get_db)):
+    # Initialize all status checks
+    frontend_connected = True  # Frontend is always connected if request is received
+    backend_connected = True   # Backend is connected if this endpoint responds
+    worker_connected = False
     database_connected = False
     openai_connected = False  
     bybit_connected = False
     uta_balance = "0.00"
     
+    # Database status check
     try:
         db.query(Coin).count()
         database_connected = True
     except Exception as e:
         logger.error(f"Database connection failed: {e}")
     
+    # OpenAI API status check
     try:
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if openai_api_key and len(openai_api_key) > 10:
@@ -265,6 +276,7 @@ async def get_system_status(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"OpenAI connection failed: {e}")
     
+    # ByBit API status check
     try:
         symbols = bybit_client.get_derivatives_symbols()
         bybit_connected = len(symbols) > 0
@@ -287,7 +299,21 @@ async def get_system_status(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Bybit connection failed: {e}")
     
+    # Worker status check (check if background tasks are running)
+    try:
+        # Check if we have recent predictions (indicates ML worker is active)
+        from datetime import datetime, timedelta
+        recent_predictions = db.query(MLPrediction).filter(
+            MLPrediction.created_at > datetime.utcnow() - timedelta(hours=1)
+        ).count()
+        worker_connected = recent_predictions > 0
+    except Exception as e:
+        logger.error(f"Worker status check failed: {e}")
+    
     return {
+        "frontend_connected": frontend_connected,
+        "backend_connected": backend_connected,
+        "worker_connected": worker_connected,
         "database_connected": database_connected,
         "openai_connected": openai_connected,
         "bybit_connected": bybit_connected,
@@ -298,6 +324,108 @@ async def get_system_status(db: Session = Depends(get_db)):
 async def get_coins(db: Session = Depends(get_db)):
     coins = db.query(Coin).filter(Coin.is_active == True).all()
     return [{"id": coin.id, "symbol": coin.symbol, "name": coin.name} for coin in coins]
+
+@app.get("/dashboard/batch")
+async def get_dashboard_batch(db: Session = Depends(get_db)):
+    """Get batch dashboard data for all coins to avoid N+1 query problem"""
+    try:
+        # Get all active coins
+        coins = db.query(Coin).filter(Coin.is_active == True).all()
+        
+        dashboard_data = []
+        for coin in coins:
+            try:
+                # Get latest predictions for this coin
+                predictions = db.query(MLPrediction).filter(
+                    MLPrediction.coin_symbol == coin.symbol
+                ).order_by(MLPrediction.created_at.desc()).limit(10).all()
+                
+                if not predictions:
+                    # No predictions available
+                    dashboard_data.append({
+                        "coin_symbol": coin.symbol,
+                        "recommendation": "HOLD",
+                        "confidence": 0,
+                        "avg_confidence": 0,
+                        "models_trained": 0,
+                        "last_trained": "Never",
+                        "consensus_breakdown": {"buy": 0, "sell": 0, "hold": 0}
+                    })
+                    continue
+                
+                # Calculate consensus
+                consensus = {"buy": 0, "sell": 0, "hold": 0}
+                total_confidence = 0
+                
+                for pred in predictions:
+                    if pred.prediction.lower() == "long":
+                        consensus["buy"] += 1
+                    elif pred.prediction.lower() == "short":  
+                        consensus["sell"] += 1
+                    else:
+                        consensus["hold"] += 1
+                    total_confidence += pred.confidence
+                
+                total_models = len(predictions)
+                avg_confidence = total_confidence / total_models if total_models > 0 else 0
+                
+                # Determine overall recommendation
+                if consensus["buy"] > consensus["sell"] and consensus["buy"] > consensus["hold"]:
+                    recommendation = "LONG"
+                    confidence = (consensus["buy"] / total_models) * 100
+                elif consensus["sell"] > consensus["buy"] and consensus["sell"] > consensus["hold"]:
+                    recommendation = "SHORT"
+                    confidence = (consensus["sell"] / total_models) * 100
+                else:
+                    recommendation = "HOLD"
+                    confidence = (consensus["hold"] / total_models) * 100
+                
+                dashboard_data.append({
+                    "coin_symbol": coin.symbol,
+                    "recommendation": recommendation,
+                    "confidence": round(confidence, 1),
+                    "avg_confidence": round(avg_confidence, 1),
+                    "models_trained": total_models,
+                    "last_trained": predictions[0].created_at.isoformat() if predictions else "Never",
+                    "consensus_breakdown": consensus
+                })
+                
+            except Exception as e:
+                logger.error(f"Error processing dashboard data for {coin.symbol}: {e}")
+                dashboard_data.append({
+                    "coin_symbol": coin.symbol,
+                    "recommendation": "HOLD",
+                    "confidence": 0,
+                    "avg_confidence": 0,
+                    "models_trained": 0,
+                    "last_trained": "Never",
+                    "consensus_breakdown": {"buy": 0, "sell": 0, "hold": 0}
+                })
+        
+        return dashboard_data
+        
+    except Exception as e:
+        logger.error(f"Error in dashboard batch endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/performance/test")
+async def performance_test():
+    """Simple performance test endpoint to measure response times"""
+    import time
+    start_time = time.time()
+    
+    # Simulate some work
+    import asyncio
+    await asyncio.sleep(0.001)  # 1ms delay
+    
+    end_time = time.time()
+    response_time = (end_time - start_time) * 1000  # Convert to milliseconds
+    
+    return {
+        "status": "ok",
+        "response_time_ms": round(response_time, 2),
+        "timestamp": time.time()
+    }
 
 @app.get("/predictions/{symbol}")
 async def get_predictions(symbol: str, db: Session = Depends(get_db)):
@@ -320,8 +448,9 @@ async def get_predictions(symbol: str, db: Session = Depends(get_db)):
 
 @app.get("/training-info")
 async def get_training_info(db: Session = Depends(get_db)):
-    """Get current ML training information with REAL data"""
+    """Get current ML training information with REAL data - OPTIMIZED"""
     try:
+        # Use efficient queries
         total_coins = db.query(Coin).filter(Coin.is_active == True).count()
         model_types = ["lstm", "random_forest", "svm", "neural_network", "xgboost", "lightgbm", "catboost", "transformer", "gru", "cnn_1d"]
         
@@ -330,7 +459,23 @@ async def get_training_info(db: Session = Depends(get_db)):
         overall_progress = (completed_predictions / total_models_expected * 100) if total_models_expected > 0 else 0
         overall_progress = min(100, overall_progress)
         
+        # Get recent training activity for better status detection
+        from datetime import datetime, timedelta
+        recent_predictions = db.query(MLPrediction).filter(
+            MLPrediction.created_at > datetime.utcnow() - timedelta(minutes=5)
+        ).count()
+        
         global current_training_coin, current_training_model, training_progress, training_paused
+        
+        # Better status detection
+        if training_paused:
+            status = "paused"
+        elif current_training_coin:
+            status = "training"
+        elif recent_predictions > 0:
+            status = "active"
+        else:
+            status = "idle"
         
         return {
             "total_coins": total_coins,
@@ -341,10 +486,73 @@ async def get_training_info(db: Session = Depends(get_db)):
             "current_coin": current_training_coin or "None",
             "current_model": current_training_model or "None",
             "current_model_progress": training_progress,
-            "status": "paused" if training_paused else "training" if current_training_coin else "idle"
+            "status": status,
+            "recent_activity": recent_predictions,
+            "model_types": model_types
         }
     except Exception as e:
         logger.error(f"Error getting training info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/training/statistics")
+async def get_training_statistics(db: Session = Depends(get_db)):
+    """Get detailed training statistics for better dashboard consistency"""
+    try:
+        # Get prediction statistics by model type
+        from sqlalchemy import func
+        
+        model_stats = db.query(
+            MLPrediction.model_type,
+            func.count(MLPrediction.id).label('count'),
+            func.avg(MLPrediction.confidence).label('avg_confidence'),
+            func.max(MLPrediction.created_at).label('last_updated')
+        ).group_by(MLPrediction.model_type).all()
+        
+        # Get prediction statistics by coin
+        coin_stats = db.query(
+            MLPrediction.coin_symbol,
+            func.count(MLPrediction.id).label('predictions_count'),
+            func.avg(MLPrediction.confidence).label('avg_confidence'),
+            func.max(MLPrediction.created_at).label('last_prediction')
+        ).group_by(MLPrediction.coin_symbol).limit(20).all()
+        
+        # Get recent predictions for activity monitoring
+        recent_predictions = db.query(MLPrediction).filter(
+            MLPrediction.created_at > datetime.utcnow() - timedelta(hours=1)
+        ).order_by(MLPrediction.created_at.desc()).limit(50).all()
+        
+        return {
+            "model_statistics": [
+                {
+                    "model_type": stat.model_type,
+                    "predictions_count": stat.count,
+                    "avg_confidence": round(float(stat.avg_confidence), 2) if stat.avg_confidence else 0,
+                    "last_updated": stat.last_updated.isoformat() if stat.last_updated else None
+                }
+                for stat in model_stats
+            ],
+            "top_coins": [
+                {
+                    "coin_symbol": stat.coin_symbol,
+                    "predictions_count": stat.predictions_count,
+                    "avg_confidence": round(float(stat.avg_confidence), 2) if stat.avg_confidence else 0,
+                    "last_prediction": stat.last_prediction.isoformat() if stat.last_prediction else None
+                }
+                for stat in coin_stats
+            ],
+            "recent_activity": [
+                {
+                    "coin_symbol": pred.coin_symbol,
+                    "model_type": pred.model_type,
+                    "prediction": pred.prediction,
+                    "confidence": pred.confidence,
+                    "created_at": pred.created_at.isoformat()
+                }
+                for pred in recent_predictions
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error getting training statistics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/trading/status")
@@ -427,6 +635,60 @@ async def apply_optimization(symbol: str, optimization_data: Dict, db: Session =
         return {"success": True, "message": f"Optimization applied to {symbol}"}
     except Exception as e:
         logger.error(f"Error applying optimization: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/strategies/all")
+async def get_all_strategies(db: Session = Depends(get_db)):
+    """Get all strategies for all coins without pagination"""
+    try:
+        # Query all coins with their strategies
+        query = db.query(Coin, TradingStrategy).outerjoin(
+            TradingStrategy, 
+            Coin.symbol == TradingStrategy.coin_symbol
+        ).filter(Coin.is_active == True)
+        
+        # Get all results
+        results = query.all()
+        
+        strategies = []
+        for coin, strategy in results:
+            # Create strategy with defaults if not exists
+            if not strategy:
+                strategy_data = {
+                    "coin_symbol": coin.symbol,
+                    "leverage": 10,
+                    "margin_mode": "cross",
+                    "position_size_percent": 2.0,
+                    "confidence_threshold": 80.0,
+                    "min_models_required": 7,
+                    "total_models_available": 10,
+                    "take_profit_percentage": 2.0,
+                    "stop_loss_percentage": 1.0,
+                    "is_active": True,
+                    "ai_optimized": False
+                }
+            else:
+                strategy_data = {
+                    "coin_symbol": coin.symbol,
+                    "leverage": strategy.leverage,
+                    "margin_mode": getattr(strategy, 'margin_mode', 'cross'),
+                    "position_size_percent": strategy.position_size_percentage,
+                    "confidence_threshold": strategy.confidence_threshold,
+                    "min_models_required": getattr(strategy, 'min_models_required', 7),
+                    "total_models_available": 10,
+                    "take_profit_percentage": strategy.take_profit_percentage,
+                    "stop_loss_percentage": strategy.stop_loss_percentage,
+                    "is_active": strategy.is_active,
+                    "ai_optimized": strategy.updated_by_ai
+                }
+            strategies.append(strategy_data)
+        
+        return {
+            "strategies": strategies,
+            "total": len(strategies)
+        }
+    except Exception as e:
+        logger.error(f"Error getting all strategies: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/strategies/paginated")

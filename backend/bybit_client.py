@@ -3,6 +3,7 @@ from typing import List, Dict, Optional
 import asyncio
 import logging
 from config import settings
+from allowed_coins import ALLOWED_COINS
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,10 @@ class BybitClient:
             
             if response["retCode"] == 0:
                 symbols = []
+                allowed_set = set(ALLOWED_COINS)  # Convert to set for faster lookup
+                
                 for instrument in response["result"]["list"]:
-                    if instrument["status"] == "Trading":
+                    if instrument["status"] == "Trading" and instrument["symbol"] in allowed_set:
                         symbols.append({
                             "symbol": instrument["symbol"],
                             "baseCoin": instrument["baseCoin"],
@@ -31,6 +34,8 @@ class BybitClient:
                             "contractType": instrument.get("contractType", "LinearPerpetual"),
                             "leverage": instrument.get("leverageFilter", {})
                         })
+                
+                logger.info(f"Filtered {len(symbols)} symbols from allowed list of {len(ALLOWED_COINS)}")
                 return symbols
             else:
                 logger.error(f"Error fetching symbols: {response}")

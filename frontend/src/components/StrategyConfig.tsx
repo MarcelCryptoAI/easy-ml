@@ -24,9 +24,11 @@ import {
   Alert,
   Pagination,
   InputAdornment,
-  LinearProgress
+  LinearProgress,
+  ToggleButton,
+  ToggleButtonGroup
 } from '@mui/material';
-import { Edit, Settings, Search } from '@mui/icons-material';
+import { Edit, Settings, Search, ViewList, ViewModule } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
@@ -63,34 +65,67 @@ export const StrategyConfig: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showAllCoins, setShowAllCoins] = useState(true); // Default to show all coins
   const itemsPerPage = 50;
   const queryClient = useQueryClient();
 
   const { data: strategiesData, isLoading } = useQuery({
-    queryKey: ['strategy-config', currentPage, searchTerm],
+    queryKey: ['strategy-config', currentPage, searchTerm, showAllCoins],
     queryFn: async () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
       
       try {
-        // Build query parameters
-        const params = new URLSearchParams({
-          page: currentPage.toString(),
-          limit: itemsPerPage.toString(),
-          ...(searchTerm && { search: searchTerm })
-        });
+        let url;
+        if (showAllCoins) {
+          // Use the new /strategies/all endpoint to get all coins
+          url = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/strategies/all`;
+        } else {
+          // Use paginated endpoint for performance if needed
+          const params = new URLSearchParams({
+            page: currentPage.toString(),
+            limit: itemsPerPage.toString(),
+            ...(searchTerm && { search: searchTerm })
+          });
+          url = `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/strategies/paginated?${params}`;
+        }
         
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/strategies/paginated?${params}`,
-          { signal: controller.signal }
-        );
+        const response = await fetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
         
         if (!response.ok) throw new Error('Failed to fetch strategies');
         
         const data = await response.json();
-        setTotalPages(Math.ceil(data.total / itemsPerPage));
-        return data;
+        
+        if (showAllCoins) {
+          // Filter client-side if search term is provided
+          let filteredStrategies = data.strategies;
+          if (searchTerm) {
+            filteredStrategies = data.strategies.filter((strategy: CoinStrategy) =>
+              strategy.coin_symbol.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+          }
+          
+          // Calculate pagination for filtered results
+          const total = filteredStrategies.length;
+          const pages = Math.ceil(total / itemsPerPage);
+          setTotalPages(pages);
+          
+          // Apply pagination client-side
+          const start = (currentPage - 1) * itemsPerPage;
+          const end = start + itemsPerPage;
+          const paginatedStrategies = filteredStrategies.slice(start, end);
+          
+          return {
+            strategies: paginatedStrategies,
+            total: total,
+            page: currentPage,
+            pages: pages
+          };
+        } else {
+          setTotalPages(Math.ceil(data.total / itemsPerPage));
+          return data;
+        }
       } catch (error) {
         clearTimeout(timeoutId);
         console.error('Failed to load strategy config:', error);
@@ -164,6 +199,13 @@ export const StrategyConfig: React.FC = () => {
     setCurrentPage(1); // Reset to first page when searching
   };
 
+  const handleViewModeChange = (event: React.MouseEvent<HTMLElement>, newMode: boolean | null) => {
+    if (newMode !== null) {
+      setShowAllCoins(newMode);
+      setCurrentPage(1); // Reset to first page when changing view mode
+    }
+  };
+
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setCurrentPage(value);
   };
@@ -180,7 +222,7 @@ export const StrategyConfig: React.FC = () => {
       </Box>
 
       {/* Search and Filters */}
-      <Box display="flex" gap={2} mb={3}>
+      <Box display="flex" gap={2} mb={3} alignItems="center" flexWrap="wrap">
         <TextField
           placeholder="Search coins... (e.g., BTC, ETH)"
           value={searchTerm}
@@ -194,6 +236,24 @@ export const StrategyConfig: React.FC = () => {
           }}
           sx={{ minWidth: 300 }}
         />
+        
+        <ToggleButtonGroup
+          value={showAllCoins}
+          exclusive
+          onChange={handleViewModeChange}
+          aria-label="view mode"
+          size="small"
+        >
+          <ToggleButton value={true} aria-label="show all coins">
+            <ViewModule />
+            <Typography sx={{ ml: 1 }}>All Coins</Typography>
+          </ToggleButton>
+          <ToggleButton value={false} aria-label="paginated view">
+            <ViewList />
+            <Typography sx={{ ml: 1 }}>Paginated</Typography>
+          </ToggleButton>
+        </ToggleButtonGroup>
+        
         <Box display="flex" alignItems="center" gap={1}>
           <Typography variant="body2" color="textSecondary">
             Page {currentPage} of {totalPages}
