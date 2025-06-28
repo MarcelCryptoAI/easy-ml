@@ -105,6 +105,56 @@ async def manual_trade(trade_data: dict):
         }
     }
 
+@app.get("/strategies/paginated")
+async def get_strategies_paginated(page: int = 1, limit: int = 50, search: str = None):
+    # Generate sample strategies
+    all_coins = [
+        "BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "SOLUSDT", "ADAUSDT", "DOGEUSDT",
+        "AVAXUSDT", "MATICUSDT", "DOTUSDT", "LINKUSDT", "ATOMUSDT", "LTCUSDT", "UNIUSDT",
+        "NEARUSDT", "ARBUSDT", "OPUSDT", "APTUSDT", "LDOUSDT", "STXUSDT", "FILUSDT",
+        "IMXUSDT", "HBARUSDT", "INJUSDT", "SUIUSDT", "SEIUSDT", "TIAUSDT", "KASUSDT"
+    ]
+    
+    # Filter by search if provided
+    filtered_coins = all_coins
+    if search:
+        filtered_coins = [c for c in all_coins if search.upper() in c]
+    
+    # Paginate
+    start = (page - 1) * limit
+    end = start + limit
+    paginated_coins = filtered_coins[start:end]
+    
+    strategies = []
+    for coin in paginated_coins:
+        strategies.append({
+            "coin_symbol": coin,
+            "leverage": 10,
+            "margin_mode": "cross",
+            "position_size_percent": 2.0,
+            "confidence_threshold": 80.0,
+            "min_models_required": 7,
+            "total_models_available": 10,
+            "take_profit_percentage": 2.0,
+            "stop_loss_percentage": 1.0,
+            "is_active": True,
+            "ai_optimized": coin in ["BTCUSDT", "ETHUSDT"]
+        })
+    
+    return {
+        "strategies": strategies,
+        "total": len(filtered_coins),
+        "page": page,
+        "pages": (len(filtered_coins) + limit - 1) // limit
+    }
+
+@app.post("/strategy/update")
+async def update_strategy(strategy_data: dict):
+    return {
+        "success": True,
+        "message": f"Strategy updated for {strategy_data.get('coin_symbol', 'UNKNOWN')}"
+    }
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))

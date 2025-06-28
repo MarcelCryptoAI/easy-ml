@@ -429,6 +429,114 @@ async def apply_optimization(symbol: str, optimization_data: Dict, db: Session =
         logger.error(f"Error applying optimization: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/strategies/paginated")
+async def get_strategies_paginated(
+    page: int = 1,
+    limit: int = 50,
+    search: str = None,
+    db: Session = Depends(get_db)
+):
+    """Get paginated strategies for all coins"""
+    try:
+        # Query all coins with their strategies
+        query = db.query(Coin, TradingStrategy).outerjoin(
+            TradingStrategy, 
+            Coin.symbol == TradingStrategy.coin_symbol
+        ).filter(Coin.is_active == True)
+        
+        # Apply search filter if provided
+        if search:
+            query = query.filter(Coin.symbol.ilike(f"%{search}%"))
+        
+        # Get total count
+        total = query.count()
+        
+        # Calculate pagination
+        skip = (page - 1) * limit
+        
+        # Get paginated results
+        results = query.offset(skip).limit(limit).all()
+        
+        strategies = []
+        for coin, strategy in results:
+            # Create strategy with defaults if not exists
+            if not strategy:
+                strategy_data = {
+                    "coin_symbol": coin.symbol,
+                    "leverage": 10,
+                    "margin_mode": "cross",
+                    "position_size_percent": 2.0,
+                    "confidence_threshold": 80.0,
+                    "min_models_required": 7,
+                    "total_models_available": 10,
+                    "take_profit_percentage": 2.0,
+                    "stop_loss_percentage": 1.0,
+                    "is_active": True,
+                    "ai_optimized": False
+                }
+            else:
+                strategy_data = {
+                    "coin_symbol": coin.symbol,
+                    "leverage": strategy.leverage,
+                    "margin_mode": getattr(strategy, 'margin_mode', 'cross'),
+                    "position_size_percent": strategy.position_size_percentage,
+                    "confidence_threshold": strategy.confidence_threshold,
+                    "min_models_required": getattr(strategy, 'min_models_required', 7),
+                    "total_models_available": 10,
+                    "take_profit_percentage": strategy.take_profit_percentage,
+                    "stop_loss_percentage": strategy.stop_loss_percentage,
+                    "is_active": strategy.is_active,
+                    "ai_optimized": strategy.updated_by_ai
+                }
+            strategies.append(strategy_data)
+        
+        return {
+            "strategies": strategies,
+            "total": total,
+            "page": page,
+            "pages": (total + limit - 1) // limit
+        }
+    except Exception as e:
+        logger.error(f"Error getting paginated strategies: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/strategy/update")
+async def update_strategy(strategy_data: Dict, db: Session = Depends(get_db)):
+    """Update strategy configuration for a coin"""
+    try:
+        coin_symbol = strategy_data.get("coin_symbol")
+        if not coin_symbol:
+            raise HTTPException(status_code=400, detail="coin_symbol is required")
+        
+        # Get or create strategy
+        strategy = db.query(TradingStrategy).filter(
+            TradingStrategy.coin_symbol == coin_symbol
+        ).first()
+        
+        if not strategy:
+            strategy = TradingStrategy(coin_symbol=coin_symbol)
+            db.add(strategy)
+        
+        # Update strategy fields
+        strategy.leverage = strategy_data.get("leverage", 10)
+        strategy.margin_mode = strategy_data.get("margin_mode", "cross")
+        strategy.position_size_percentage = strategy_data.get("position_size_percent", 2.0)
+        strategy.confidence_threshold = strategy_data.get("confidence_threshold", 80.0)
+        strategy.take_profit_percentage = strategy_data.get("take_profit_percentage", 2.0)
+        strategy.stop_loss_percentage = strategy_data.get("stop_loss_percentage", 1.0)
+        strategy.updated_at = datetime.utcnow()
+        
+        # Store additional fields if needed
+        if hasattr(strategy, 'min_models_required'):
+            strategy.min_models_required = strategy_data.get("min_models_required", 7)
+        
+        db.commit()
+        
+        return {"success": True, "message": f"Strategy updated for {coin_symbol}"}
+    except Exception as e:
+        logger.error(f"Error updating strategy: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/signals")
 async def get_trading_signals(db: Session = Depends(get_db)):
     """Get autonomous trading signals from AI advisor"""
