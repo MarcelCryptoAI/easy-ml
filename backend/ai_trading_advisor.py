@@ -71,9 +71,9 @@ class AITradingAdvisor:
                 }
                 total_confidence += pred.confidence
                 
-                if pred.prediction == "buy":
+                if pred.prediction.upper() in ["BUY", "LONG"]:
                     buy_votes += 1
-                elif pred.prediction == "sell":
+                elif pred.prediction.upper() in ["SELL", "SHORT"]:
                     sell_votes += 1
                 else:
                     hold_votes += 1

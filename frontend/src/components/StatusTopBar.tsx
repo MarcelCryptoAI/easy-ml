@@ -1,20 +1,10 @@
 import React from 'react';
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Box,
-  Chip,
-  IconButton,
-  Tooltip
-} from '@mui/material';
 import { 
   Storage, 
   SmartToy, 
   TrendingUp, 
   AccountBalance,
   Refresh,
-  Circle,
   Computer,
   Api,
   Memory
@@ -91,151 +81,58 @@ export const StatusTopBar: React.FC = () => {
     retry: 2
   });
 
-  const getStatusColor = (connected: boolean) => connected ? 'success' : 'error';
-  const getStatusIcon = (connected: boolean) => (
-    <Circle 
-      sx={{ 
-        fontSize: 8, 
-        color: connected ? '#4caf50' : '#f44336',
-        mr: 0.5 
-      }} 
-    />
+  const getStatusIndicator = (connected: boolean, label: string, icon: React.ReactNode) => (
+    <div className="flex items-center gap-2 px-3 py-2 bg-black/30 backdrop-blur-sm border border-gray-700/50 rounded-lg">
+      <div className="flex items-center gap-1">
+        {icon}
+        <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+      </div>
+      <span className={`text-sm font-medium ${connected ? 'text-green-400' : 'text-red-400'}`}>
+        {label}
+      </span>
+    </div>
   );
 
   return (
-    <AppBar position="static" elevation={1}>
-      <Toolbar>
+    <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700/50 backdrop-blur-xl">
+      <div className="flex items-center justify-between px-6 py-3">
         {/* Title */}
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          🤖 Crypto Trading ML Platform - Autonomous Mode
-        </Typography>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+            🤖 Crypto Trading ML Platform
+          </h1>
+          <div className="px-3 py-1 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50 rounded-lg">
+            <span className="text-green-400 text-sm font-semibold">LIVE AUTONOMOUS MODE</span>
+          </div>
+        </div>
 
-        {/* Connection Status */}
-        <Box display="flex" alignItems="center" gap={1}>
-          {/* Frontend Status */}
-          <Tooltip title="Frontend Connection">
-            <Chip
-              icon={<Computer />}
-              label={
-                <Box display="flex" alignItems="center">
-                  {getStatusIcon(statusData?.frontend_connected || true)}
-                  Frontend
-                </Box>
-              }
-              color={getStatusColor(statusData?.frontend_connected || true) as any}
-              variant="outlined"
-              size="small"
-            />
-          </Tooltip>
-
-          {/* Backend Status */}
-          <Tooltip title="Backend API Connection">
-            <Chip
-              icon={<Api />}
-              label={
-                <Box display="flex" alignItems="center">
-                  {getStatusIcon(statusData?.backend_connected || false)}
-                  Backend
-                </Box>
-              }
-              color={getStatusColor(statusData?.backend_connected || false) as any}
-              variant="outlined"
-              size="small"
-            />
-          </Tooltip>
-
-          {/* Worker Status */}
-          <Tooltip title="ML Worker Status">
-            <Chip
-              icon={<Memory />}
-              label={
-                <Box display="flex" alignItems="center">
-                  {getStatusIcon(statusData?.worker_connected || false)}
-                  Worker
-                </Box>
-              }
-              color={getStatusColor(statusData?.worker_connected || false) as any}
-              variant="outlined"
-              size="small"
-            />
-          </Tooltip>
-
-          {/* Database Status */}
-          <Tooltip title="Database Connection">
-            <Chip
-              icon={<Storage />}
-              label={
-                <Box display="flex" alignItems="center">
-                  {getStatusIcon(statusData?.database_connected || false)}
-                  Database
-                </Box>
-              }
-              color={getStatusColor(statusData?.database_connected || false) as any}
-              variant="outlined"
-              size="small"
-            />
-          </Tooltip>
-
-          {/* ByBit API Status */}
-          <Tooltip title="ByBit API Connection">
-            <Chip
-              icon={<TrendingUp />}
-              label={
-                <Box display="flex" alignItems="center">
-                  {getStatusIcon(statusData?.bybit_connected || false)}
-                  ByBit API
-                </Box>
-              }
-              color={getStatusColor(statusData?.bybit_connected || false) as any}
-              variant="outlined"
-              size="small"
-            />
-          </Tooltip>
-
-          {/* OpenAI API Status */}
-          <Tooltip title="OpenAI API Connection">
-            <Chip
-              icon={<SmartToy />}
-              label={
-                <Box display="flex" alignItems="center">
-                  {getStatusIcon(statusData?.openai_connected || false)}
-                  OpenAI API
-                </Box>
-              }
-              color={getStatusColor(statusData?.openai_connected || false) as any}
-              variant="outlined"
-              size="small"
-            />
-          </Tooltip>
+        {/* Connection Status & Balance */}
+        <div className="flex items-center gap-3">
+          {/* Status Indicators */}
+          {getStatusIndicator(statusData?.frontend_connected || true, 'Frontend', <Computer className="w-4 h-4 text-cyan-400" />)}
+          {getStatusIndicator(statusData?.backend_connected || false, 'Backend', <Api className="w-4 h-4 text-purple-400" />)}
+          {getStatusIndicator(statusData?.worker_connected || false, 'Worker', <Memory className="w-4 h-4 text-blue-400" />)}
+          {getStatusIndicator(statusData?.database_connected || false, 'Database', <Storage className="w-4 h-4 text-indigo-400" />)}
+          {getStatusIndicator(statusData?.bybit_connected || false, 'ByBit API', <TrendingUp className="w-4 h-4 text-yellow-400" />)}
+          {getStatusIndicator(statusData?.openai_connected || false, 'OpenAI API', <SmartToy className="w-4 h-4 text-pink-400" />)}
 
           {/* Account Balance */}
-          <Tooltip title="Account Balance (USDT)">
-            <Chip
-              icon={<AccountBalance />}
-              label={`$${parseFloat(statusData?.uta_balance || '0').toFixed(2)}`}
-              color="primary"
-              variant="filled"
-              size="small"
-              sx={{ 
-                color: 'white',
-                fontWeight: 'bold',
-                minWidth: 100
-              }}
-            />
-          </Tooltip>
+          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50 rounded-lg">
+            <AccountBalance className="w-5 h-5 text-green-400" />
+            <span className="text-green-400 font-bold text-lg">
+              ${parseFloat(statusData?.uta_balance || '0').toFixed(2)}
+            </span>
+          </div>
 
           {/* Refresh Button */}
-          <Tooltip title="Refresh Status">
-            <IconButton 
-              onClick={() => refetch()} 
-              color="inherit" 
-              size="small"
-            >
-              <Refresh />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </Toolbar>
-    </AppBar>
+          <button
+            onClick={() => refetch()}
+            className="p-2 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/50 rounded-lg text-cyan-400 hover:bg-cyan-500/30 transition-all duration-300 hover:scale-105"
+          >
+            <Refresh className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };

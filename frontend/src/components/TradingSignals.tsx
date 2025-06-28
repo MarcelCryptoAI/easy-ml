@@ -45,19 +45,21 @@ export const TradingSignals: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
 
-  const { data: signals = [], isLoading, refetch } = useQuery({
+  const { data: signalsResponse, isLoading, refetch } = useQuery({
     queryKey: ['trading-signals'],
     queryFn: async () => {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/signals`);
       if (!response.ok) {
         throw new Error(`Failed to fetch signals: ${response.status} ${response.statusText}`);
       }
-      return await response.json() as TradingSignal[];
+      return await response.json();
     },
     refetchInterval: 30000 // Refresh every 30 seconds
   });
 
-  const filteredSignals = signals.filter(signal => {
+  const signals = signalsResponse?.signals || [];
+
+  const filteredSignals = signals.filter((signal: TradingSignal) => {
     const matchesSearch = signal.coin_symbol.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || signal.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -65,33 +67,33 @@ export const TradingSignals: React.FC = () => {
 
   const getSignalIcon = (type: string) => {
     switch (type) {
-      case 'LONG': return <TrendingUp color="success" />;
-      case 'SHORT': return <TrendingDown color="error" />;
-      case 'HOLD': return <Remove color="disabled" />;
+      case 'LONG': return <TrendingUp className="text-green-400" />;
+      case 'SHORT': return <TrendingDown className="text-red-400" />;
+      case 'HOLD': return <Remove className="text-gray-400" />;
       default: return <Remove />;
     }
   };
 
   const getSignalColor = (type: string) => {
     switch (type) {
-      case 'LONG': return 'success';
-      case 'SHORT': return 'error';
-      case 'HOLD': return 'default';
-      default: return 'default';
+      case 'LONG': return 'from-green-500/20 to-emerald-500/20 border-green-500/50';
+      case 'SHORT': return 'from-red-500/20 to-pink-500/20 border-red-500/50';
+      case 'HOLD': return 'from-gray-500/20 to-gray-500/20 border-gray-500/50';
+      default: return 'from-gray-500/20 to-gray-500/20 border-gray-500/50';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'open': return 'warning';
-      case 'closed': return 'success';
-      case 'cancelled': return 'error';
-      default: return 'default';
+      case 'open': return 'from-yellow-500/20 to-orange-500/20 border-yellow-500/50';
+      case 'closed': return 'from-green-500/20 to-emerald-500/20 border-green-500/50';
+      case 'cancelled': return 'from-red-500/20 to-pink-500/20 border-red-500/50';
+      default: return 'from-gray-500/20 to-gray-500/20 border-gray-500/50';
     }
   };
 
   const getPnLColor = (pnl: number) => {
-    return pnl >= 0 ? 'success' : 'error';
+    return pnl >= 0 ? 'text-green-400' : 'text-red-400';
   };
 
   const formatDateTime = (timestamp: string) => {
@@ -104,183 +106,213 @@ export const TradingSignals: React.FC = () => {
     });
   };
 
-  const totalPnL = filteredSignals.reduce((sum, signal) => sum + signal.unrealized_pnl_usdt, 0);
-  const openPositions = filteredSignals.filter(s => s.status === 'open').length;
+  const totalPnL = filteredSignals.reduce((sum: number, signal: TradingSignal) => sum + signal.unrealized_pnl_usdt, 0);
+  const openPositions = filteredSignals.filter((s: TradingSignal) => s.status === 'open').length;
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">📡 Trading Signals</Typography>
-        <IconButton onClick={() => refetch()}>
-          <Refresh />
-        </IconButton>
-      </Box>
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-blue-900/20" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
+      </div>
 
-      {/* Summary Stats */}
-      <Box display="flex" gap={2} mb={3}>
-        <Paper sx={{ p: 2, flex: 1 }}>
-          <Typography variant="h6" color="primary">Total Signals</Typography>
-          <Typography variant="h4">{signals.length}</Typography>
-        </Paper>
-        <Paper sx={{ p: 2, flex: 1 }}>
-          <Typography variant="h6" color="warning.main">Open Positions</Typography>
-          <Typography variant="h4">{openPositions}</Typography>
-        </Paper>
-        <Paper sx={{ p: 2, flex: 1 }}>
-          <Typography variant="h6" color={totalPnL >= 0 ? 'success.main' : 'error.main'}>
-            Total P&L (USDT)
-          </Typography>
-          <Typography variant="h4" color={totalPnL >= 0 ? 'success.main' : 'error.main'}>
-            {totalPnL >= 0 ? '+' : ''}{totalPnL.toFixed(2)}
-          </Typography>
-        </Paper>
-      </Box>
+      <div className="relative z-10 p-8">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500">
+            📡 Trading Signals Command Center
+          </h1>
+          <button
+            onClick={() => refetch()}
+            className="px-6 py-3 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 backdrop-blur-xl border border-cyan-500/50 rounded-xl text-cyan-400 hover:bg-cyan-500/30 transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(0,255,255,0.5)]"
+          >
+            <Refresh className="animate-spin-slow" />
+          </button>
+        </div>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        <strong>Signal Criteria:</strong> Only signals that meet ALL criteria are shown:
-        <br />• Model Agreement: Required number of models agree on direction
-        <br />• Confidence Threshold: Average confidence exceeds minimum threshold
-        <br />• Risk Management: Position sizing and risk parameters validated
-      </Alert>
+        {/* Summary Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-cyan-500/30 rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-cyan-400 mb-2">Total Signals</h3>
+              <p className="text-4xl font-bold text-white">{signals.length}</p>
+            </div>
+          </div>
+          
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-yellow-500/30 rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-yellow-400 mb-2">Open Positions</h3>
+              <p className="text-4xl font-bold text-white">{openPositions}</p>
+            </div>
+          </div>
+          
+          <div className="relative group">
+            <div className={`absolute inset-0 ${totalPnL >= 0 ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20' : 'bg-gradient-to-r from-red-500/20 to-pink-500/20'} rounded-2xl blur-xl`} />
+            <div className={`relative bg-black/50 backdrop-blur-xl border ${totalPnL >= 0 ? 'border-green-500/30' : 'border-red-500/30'} rounded-2xl p-6`}>
+              <h3 className={`text-xl font-bold ${totalPnL >= 0 ? 'text-green-400' : 'text-red-400'} mb-2`}>Total P&L (USDT)</h3>
+              <p className={`text-4xl font-bold ${totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {totalPnL >= 0 ? '+' : ''}{totalPnL.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
 
-      {/* Filters */}
-      <Box display="flex" gap={2} mb={3}>
-        <TextField
-          placeholder="Search coins..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ minWidth: 300 }}
-        />
-        <TextField
-          select
-          label="Status"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          SelectProps={{ native: true }}
-          sx={{ minWidth: 150 }}
-        >
-          <option value="all">All Status</option>
-          <option value="open">Open</option>
-          <option value="closed">Closed</option>
-        </TextField>
-      </Box>
+        {/* Signal Criteria Alert */}
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-2xl blur-xl" />
+          <div className="relative bg-black/50 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-xl flex items-center justify-center">
+                <span className="text-2xl">📋</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-blue-400 mb-2">Live Signal Criteria</h3>
+                <div className="text-gray-300 space-y-1">
+                  <p>• <strong>AI Consensus:</strong> Weighted model confidence ≥ 75% + decision margin ≥ 0.3</p>
+                  <p>• <strong>Model Agreement:</strong> Multiple models must agree on trade direction</p>
+                  <p>• <strong>Risk Management:</strong> Position sizing and stop-loss parameters validated</p>
+                  <p>• <strong>Live Status:</strong> 🟢 System continuously monitors and executes qualifying signals</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      {isLoading ? (
-        <LinearProgress />
-      ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell><strong>Date/Time</strong></TableCell>
-                <TableCell><strong>Coin</strong></TableCell>
-                <TableCell><strong>Signal</strong></TableCell>
-                <TableCell><strong>Models</strong></TableCell>
-                <TableCell><strong>Confidence</strong></TableCell>
-                <TableCell><strong>Entry Price</strong></TableCell>
-                <TableCell><strong>Current Price</strong></TableCell>
-                <TableCell><strong>Position Size</strong></TableCell>
-                <TableCell><strong>Status</strong></TableCell>
-                <TableCell><strong>P&L (USDT)</strong></TableCell>
-                <TableCell><strong>P&L (%)</strong></TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredSignals.map((signal) => (
-                <TableRow key={signal.id}>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatDateTime(signal.timestamp)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="subtitle2" fontWeight="bold">
-                      {signal.coin_symbol}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      icon={getSignalIcon(signal.signal_type)}
-                      label={signal.signal_type}
-                      color={getSignalColor(signal.signal_type) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Tooltip title={`${signal.models_agreed} out of ${signal.total_models} models agreed`}>
-                      <Chip
-                        label={`${signal.models_agreed}/${signal.total_models}`}
-                        color="info"
-                        size="small"
-                      />
-                    </Tooltip>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {signal.avg_confidence.toFixed(1)}%
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      ${signal.entry_price.toFixed(4)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      ${signal.current_price.toFixed(4)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      ${signal.position_size_usdt.toFixed(0)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={signal.status.toUpperCase()}
-                      color={getStatusColor(signal.status) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography 
-                      variant="body2" 
-                      color={getPnLColor(signal.unrealized_pnl_usdt)}
-                      fontWeight="bold"
-                    >
-                      {signal.unrealized_pnl_usdt >= 0 ? '+' : ''}
-                      {signal.unrealized_pnl_usdt.toFixed(2)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography 
-                      variant="body2" 
-                      color={getPnLColor(signal.unrealized_pnl_percent)}
-                      fontWeight="bold"
-                    >
-                      {signal.unrealized_pnl_percent >= 0 ? '+' : ''}
-                      {signal.unrealized_pnl_percent.toFixed(2)}%
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+        {/* Filters */}
+        <div className="flex gap-4 mb-8">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl blur-lg" />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search coins..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-80 px-4 py-3 bg-black/50 backdrop-blur-xl border border-purple-500/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500/60"
+              />
+              <Search className="absolute right-3 top-3 text-gray-400" />
+            </div>
+          </div>
+          
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl blur-lg" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="relative px-4 py-3 bg-black/50 backdrop-blur-xl border border-cyan-500/30 rounded-xl text-white focus:outline-none focus:border-cyan-500/60"
+            >
+              <option value="all">All Status</option>
+              <option value="open">Open</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        </div>
 
-      {filteredSignals.length === 0 && !isLoading && (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          No trading signals found matching your criteria.
-        </Alert>
-      )}
-    </Box>
+        {isLoading ? (
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6">
+              <div className="animate-pulse">
+                <div className="h-4 bg-purple-500/30 rounded mb-4"></div>
+                <div className="h-4 bg-purple-500/20 rounded mb-4"></div>
+                <div className="h-4 bg-purple-500/10 rounded"></div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-500/10 to-gray-500/10 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-gray-500/30 rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-white">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left p-4 text-cyan-400 font-bold">Date/Time</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Coin</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Signal</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Models</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Confidence</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Entry Price</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Current Price</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Position Size</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Status</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">P&L (USDT)</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">P&L (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSignals.map((signal: TradingSignal) => (
+                      <tr key={signal.id} className="border-b border-gray-800 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-transparent transition-all duration-300">
+                        <td className="p-4 text-gray-300">
+                          {formatDateTime(signal.timestamp)}
+                        </td>
+                        <td className="p-4">
+                          <span className="font-bold text-white">{signal.coin_symbol}</span>
+                        </td>
+                        <td className="p-4">
+                          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-gradient-to-r ${getSignalColor(signal.signal_type)} border`}>
+                            {getSignalIcon(signal.signal_type)}
+                            <span className="font-semibold">{signal.signal_type}</span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/50">
+                            <span className="text-blue-400 font-semibold">{signal.models_agreed}/{signal.total_models}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-white">
+                          {signal.avg_confidence.toFixed(1)}%
+                        </td>
+                        <td className="p-4 text-gray-300">
+                          ${signal.entry_price.toFixed(4)}
+                        </td>
+                        <td className="p-4 text-gray-300">
+                          ${signal.current_price.toFixed(4)}
+                        </td>
+                        <td className="p-4 text-gray-300">
+                          ${signal.position_size_usdt.toFixed(0)}
+                        </td>
+                        <td className="p-4">
+                          <div className={`inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r ${getStatusColor(signal.status)} border`}>
+                            <span className="font-semibold">{signal.status.toUpperCase()}</span>
+                          </div>
+                        </td>
+                        <td className={`p-4 font-bold ${getPnLColor(signal.unrealized_pnl_usdt)}`}>
+                          {signal.unrealized_pnl_usdt >= 0 ? '+' : ''}
+                          {signal.unrealized_pnl_usdt.toFixed(2)}
+                        </td>
+                        <td className={`p-4 font-bold ${getPnLColor(signal.unrealized_pnl_percent)}`}>
+                          {signal.unrealized_pnl_percent >= 0 ? '+' : ''}
+                          {signal.unrealized_pnl_percent.toFixed(2)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {filteredSignals.length === 0 && !isLoading && (
+          <div className="relative mt-8">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-6">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <span className="text-3xl">📡</span>
+                </div>
+                <h3 className="text-xl font-bold text-blue-400 mb-2">No Trading Signals Found</h3>
+                <p className="text-gray-300">No signals match your current criteria. The system is actively monitoring for new opportunities.</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };

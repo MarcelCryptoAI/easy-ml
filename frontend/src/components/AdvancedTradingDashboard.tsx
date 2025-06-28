@@ -157,6 +157,19 @@ export const AdvancedTradingDashboard: React.FC = () => {
     refetchInterval: false
   });
 
+  // Fetch dashboard stats
+  const { data: dashboardStats } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/dashboard/stats`
+      );
+      if (!response.ok) throw new Error('Failed to fetch dashboard stats');
+      return response.json();
+    },
+    refetchInterval: autoRefresh ? 60000 : false
+  });
+
   // Format currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -596,21 +609,21 @@ export const AdvancedTradingDashboard: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Active Strategies</span>
-                  <span className="text-emerald-400 font-bold">512</span>
+                  <span className="text-emerald-400 font-bold">{dashboardStats?.active_strategies || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Models Running</span>
-                  <span className="text-emerald-400 font-bold">10</span>
+                  <span className="text-emerald-400 font-bold">{dashboardStats?.models_running || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Predictions/Hour</span>
-                  <span className="text-emerald-400 font-bold">~850</span>
+                  <span className="text-emerald-400 font-bold">{dashboardStats?.predictions_per_hour || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">System Status</span>
                   <span className="text-emerald-400 font-bold flex items-center gap-2">
                     <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                    ONLINE
+                    {dashboardStats?.system_status || 'OFFLINE'}
                   </span>
                 </div>
               </div>
@@ -626,20 +639,22 @@ export const AdvancedTradingDashboard: React.FC = () => {
               </h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Daily PnL</span>
-                  <span className="text-green-400 font-bold">+$234.56</span>
+                  <span className="text-gray-400">Total PnL</span>
+                  <span className={`font-bold ${(tradingStats?.total_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {formatCurrency(tradingStats?.total_pnl || 0)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Trades Today</span>
-                  <span className="text-violet-400 font-bold">23</span>
+                  <span className="text-gray-400">Total Trades</span>
+                  <span className="text-violet-400 font-bold">{tradingStats?.total_trades || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Win Rate 24H</span>
-                  <span className="text-green-400 font-bold">78.3%</span>
+                  <span className="text-gray-400">Win Rate</span>
+                  <span className="text-green-400 font-bold">{(tradingStats?.win_rate || 0).toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Volume 24H</span>
-                  <span className="text-violet-400 font-bold">$12.4K</span>
+                  <span className="text-gray-400">Total Volume</span>
+                  <span className="text-violet-400 font-bold">{formatCurrency(tradingStats?.total_volume || 0)}</span>
                 </div>
               </div>
             </div>

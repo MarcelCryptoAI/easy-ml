@@ -48,6 +48,7 @@ async def startup_event():
     asyncio.create_task(trading_engine.process_trading_signals())
     asyncio.create_task(ml_training_task_10_models())
     asyncio.create_task(historical_data_fetch_task())
+    asyncio.create_task(live_signal_monitoring_task())  # NEW: Live signal monitoring
     logger.info("Platform started successfully!")
 
 async def sync_coins_task():
@@ -884,18 +885,57 @@ async def bulk_update_strategies(strategy_data: Dict, db: Session = Depends(get_
 
 @app.get("/signals")
 async def get_trading_signals(db: Session = Depends(get_db)):
-    """Get autonomous trading signals from AI advisor"""
+    """Get autonomous trading signals from AI advisor and live monitoring"""
     try:
-        signals = ai_advisor.get_autonomous_trading_signals(db)
+        # Get signals from AI advisor
+        ai_signals = ai_advisor.get_autonomous_trading_signals(db)
+        
+        # Convert to the format expected by frontend
+        formatted_signals = []
+        for signal in ai_signals:
+            formatted_signals.append({
+                "id": f"{signal['coin_symbol']}_{int(datetime.utcnow().timestamp())}",
+                "coin_symbol": signal['coin_symbol'],
+                "signal_type": signal['signal'],
+                "timestamp": datetime.utcnow().isoformat(),
+                "models_agreed": signal['models_consensus'].get('buy', 0) + signal['models_consensus'].get('sell', 0),
+                "total_models": 10,  # We have 10 model types
+                "avg_confidence": signal['avg_model_confidence'],
+                "entry_price": 0.0,  # Will be filled when trade is executed
+                "current_price": 0.0,  # Will be filled when trade is executed  
+                "position_size_usdt": 0.0,  # Will be calculated based on strategy
+                "status": "pending",  # pending, open, closed
+                "unrealized_pnl_usdt": 0.0,
+                "unrealized_pnl_percent": 0.0,
+                "criteria_met": {
+                    "confidence_threshold": signal['confidence'] >= 75.0,
+                    "model_agreement": signal['models_consensus'].get('buy', 0) >= 6 or signal['models_consensus'].get('sell', 0) >= 6,
+                    "risk_management": True
+                }
+            })
+        
+        logger.info(f"📊 Generated {len(formatted_signals)} trading signals")
+        
         return {
             "success": True,
-            "signals": signals,
-            "total_signals": len(signals),
-            "timestamp": datetime.utcnow().isoformat()
+            "signals": formatted_signals,
+            "total_signals": len(formatted_signals),
+            "timestamp": datetime.utcnow().isoformat(),
+            "criteria": {
+                "min_confidence": 75.0,
+                "min_model_agreement": 6,
+                "risk_management_enabled": True
+            }
         }
     except Exception as e:
         logger.error(f"Error getting trading signals: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {
+            "success": False,
+            "signals": [],
+            "total_signals": 0,
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e)
+        }
 
 @app.post("/trading/manual")
 async def execute_manual_trade(trade_data: Dict, db: Session = Depends(get_db)):
@@ -1076,7 +1116,7 @@ async def get_trading_statistics(db: Session = Depends(get_db)):
 
 @app.get("/models/performance")
 async def get_model_performance(db: Session = Depends(get_db)):
-    """Get ML model performance statistics"""
+    """Get ML model performance statistics - REAL DATA ONLY"""
     try:
         from sqlalchemy import func
         
@@ -1113,23 +1153,12 @@ async def get_model_performance(db: Session = Depends(get_db)):
         return performance_data
     except Exception as e:
         logger.error(f"Error getting model performance: {e}")
-        # Return default model data
-        default_models = ["lstm", "random_forest", "svm", "neural_network", "xgboost"]
-        return [
-            {
-                "model_type": model,
-                "accuracy": 75.0 + (i * 2),
-                "total_predictions": 100 + (i * 50),
-                "successful_predictions": 75 + (i * 40),
-                "avg_confidence": 75.0 + (i * 2),
-                "roi_contribution": 0.5 + (i * 0.8)
-            }
-            for i, model in enumerate(default_models)
-        ]
+        # Return empty list when no real data available
+        return []
 
 @app.get("/trades/recent")
 async def get_recent_trades(limit: int = 10, db: Session = Depends(get_db)):
-    """Get recent trading activity"""
+    """Get recent trading activity - REAL DATA ONLY"""
     try:
         trades = db.query(Trade).order_by(Trade.opened_at.desc()).limit(limit).all()
         
@@ -1142,71 +1171,74 @@ async def get_recent_trades(limit: int = 10, db: Session = Depends(get_db)):
                 "roi": round((trade.pnl / (trade.size * trade.price) * 100), 2) if trade.size and trade.price else 0,
                 "opened_at": trade.opened_at.isoformat() if trade.opened_at else None,
                 "closed_at": trade.closed_at.isoformat() if trade.closed_at else None,
-                "ml_confidence": trade.ml_confidence or 75
+                "ml_confidence": trade.ml_confidence or 0
             })
         
         return recent_trades
     except Exception as e:
         logger.error(f"Error getting recent trades: {e}")
-        # Return sample data when no trades available
-        import random
-        sample_coins = ["BTCUSDT", "ETHUSDT", "ADAUSDT", "BNBUSDT", "SOLUSDT"]
-        return [
-            {
-                "coin_symbol": random.choice(sample_coins),
-                "side": random.choice(["LONG", "SHORT"]),
-                "pnl": round(random.uniform(-50, 150), 2),
-                "roi": round(random.uniform(-5, 15), 2),
-                "opened_at": datetime.utcnow().isoformat(),
-                "closed_at": datetime.utcnow().isoformat(),
-                "ml_confidence": random.randint(70, 95)
-            }
-            for _ in range(limit)
-        ]
+        # Return empty list when no real trades available
+        return []
 
 @app.get("/analytics/timeseries")
 async def get_timeseries_data(timeframe: str = "24h", db: Session = Depends(get_db)):
-    """Get time series data for portfolio performance charts"""
+    """Get time series data for portfolio performance charts - REAL DATA ONLY"""
     try:
-        # Generate sample time series data based on trades
         from datetime import timedelta
-        import random
+        from sqlalchemy import func
         
         # Determine time range based on timeframe
         if timeframe == "24h":
-            hours = 24
-            interval = 1
+            time_filter = datetime.utcnow() - timedelta(hours=24)
         elif timeframe == "7d":
-            hours = 168
-            interval = 4
+            time_filter = datetime.utcnow() - timedelta(days=7)
         elif timeframe == "30d":
-            hours = 720
-            interval = 24
+            time_filter = datetime.utcnow() - timedelta(days=30)
         else:
-            hours = 24
-            interval = 1
+            time_filter = datetime.utcnow() - timedelta(hours=24)
         
+        # Get actual trades within timeframe
+        trades = db.query(Trade).filter(
+            Trade.opened_at >= time_filter
+        ).order_by(Trade.opened_at).all()
+        
+        if not trades:
+            return []
+        
+        # Calculate cumulative PnL and balance over time
         timeseries_data = []
-        current_time = datetime.utcnow() - timedelta(hours=hours)
-        balance = 1000  # Starting balance
+        initial_balance = 1000  # Starting balance assumption
         cumulative_pnl = 0
-        trades_count = 0
+        current_balance = initial_balance
         
-        for i in range(0, hours, interval):
-            # Simulate some randomness in the data
-            pnl_change = random.uniform(-20, 30)
-            cumulative_pnl += pnl_change
-            balance += pnl_change
+        # Group trades by hour/day depending on timeframe
+        interval_hours = 1 if timeframe == "24h" else (4 if timeframe == "7d" else 24)
+        
+        current_time = time_filter
+        end_time = datetime.utcnow()
+        
+        while current_time <= end_time:
+            next_time = current_time + timedelta(hours=interval_hours)
             
-            if random.random() > 0.7:  # 30% chance of a trade
-                trades_count += 1
+            # Get trades in this interval
+            interval_trades = [
+                t for t in trades 
+                if current_time <= t.opened_at < next_time and t.status == "closed"
+            ]
+            
+            # Calculate PnL for this interval
+            interval_pnl = sum(t.pnl for t in interval_trades)
+            cumulative_pnl += interval_pnl
+            current_balance += interval_pnl
             
             timeseries_data.append({
-                "timestamp": (current_time + timedelta(hours=i)).isoformat(),
-                "balance": round(balance, 2),
+                "timestamp": current_time.isoformat(),
+                "balance": round(current_balance, 2),
                 "cumulative_pnl": round(cumulative_pnl, 2),
-                "trades_count": trades_count
+                "trades_count": len(interval_trades)
             })
+            
+            current_time = next_time
         
         return timeseries_data
     except Exception as e:
@@ -1215,21 +1247,13 @@ async def get_timeseries_data(timeframe: str = "24h", db: Session = Depends(get_
 
 @app.get("/analytics/pnl-distribution")
 async def get_pnl_distribution(db: Session = Depends(get_db)):
-    """Get PnL distribution for histogram charts"""
+    """Get PnL distribution for histogram charts - REAL DATA ONLY"""
     try:
         trades = db.query(Trade).filter(Trade.status == "closed").all()
         
         if not trades:
-            # Return sample distribution
-            return [
-                {"range": "-100 to -50", "count": 2, "value": -75},
-                {"range": "-50 to -10", "count": 8, "value": -30},
-                {"range": "-10 to 0", "count": 15, "value": -5},
-                {"range": "0 to 10", "count": 25, "value": 5},
-                {"range": "10 to 50", "count": 18, "value": 30},
-                {"range": "50 to 100", "count": 12, "value": 75},
-                {"range": "100+", "count": 5, "value": 150}
-            ]
+            # Return empty distribution when no real trades
+            return []
         
         # Create PnL ranges
         ranges = [
@@ -1261,6 +1285,182 @@ async def get_pnl_distribution(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error getting PnL distribution: {e}")
         return []
+
+@app.get("/debug/predictions")
+async def debug_predictions(db: Session = Depends(get_db)):
+    """Debug endpoint to check ML predictions status"""
+    try:
+        total_predictions = db.query(MLPrediction).count()
+        recent_predictions = db.query(MLPrediction).filter(
+            MLPrediction.created_at >= datetime.utcnow() - timedelta(hours=24)
+        ).count()
+        
+        # Get sample predictions
+        sample_predictions = db.query(MLPrediction).order_by(
+            MLPrediction.created_at.desc()
+        ).limit(5).all()
+        
+        coins_with_predictions = db.query(MLPrediction.coin_symbol).distinct().count()
+        
+        return {
+            "total_predictions": total_predictions,
+            "recent_predictions_24h": recent_predictions,
+            "coins_with_predictions": coins_with_predictions,
+            "sample_predictions": [
+                {
+                    "coin": pred.coin_symbol,
+                    "model": pred.model_type,
+                    "prediction": pred.prediction,
+                    "confidence": pred.confidence,
+                    "created_at": pred.created_at.isoformat()
+                }
+                for pred in sample_predictions
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error in debug predictions: {e}")
+        return {"error": str(e)}
+
+@app.get("/dashboard/stats")
+async def get_dashboard_stats(db: Session = Depends(get_db)):
+    """Get dashboard statistics - active strategies, models, etc."""
+    try:
+        # Get total active coins/strategies
+        active_coins_count = db.query(Coin).filter(Coin.is_active == True).count()
+        
+        # Get total models with predictions
+        models_with_predictions = db.query(MLPrediction.model_type).distinct().count()
+        
+        # Get total predictions count
+        total_predictions = db.query(MLPrediction).count()
+        
+        # Get recent predictions (last 24 hours) for "predictions per hour"
+        from datetime import timedelta
+        recent_predictions = db.query(MLPrediction).filter(
+            MLPrediction.created_at >= datetime.utcnow() - timedelta(hours=24)
+        ).count()
+        
+        predictions_per_hour = recent_predictions / 24 if recent_predictions > 0 else 0
+        
+        return {
+            "active_strategies": active_coins_count,
+            "models_running": models_with_predictions,
+            "predictions_per_hour": round(predictions_per_hour, 0),
+            "total_predictions": total_predictions,
+            "system_status": "LIVE"
+        }
+    except Exception as e:
+        logger.error(f"Error getting dashboard stats: {e}")
+        return {
+            "active_strategies": 0,
+            "models_running": 0,
+            "predictions_per_hour": 0,
+            "total_predictions": 0,
+            "system_status": "OFFLINE"
+        }
+
+async def live_signal_monitoring_task():
+    """Continuously monitor for trading signals and execute trades"""
+    logger.info("🤖 Starting live signal monitoring task...")
+    
+    while True:
+        try:
+            db = next(get_db())
+            
+            # Get all active coins
+            active_coins = db.query(Coin).filter(Coin.is_active == True).all()
+            logger.info(f"📊 Monitoring {len(active_coins)} active coins for trading signals...")
+            
+            signals_generated = 0
+            trades_executed = 0
+            
+            for coin in active_coins:
+                try:
+                    # Get latest predictions for this coin
+                    predictions = db.query(MLPrediction).filter(
+                        MLPrediction.coin_symbol == coin.symbol,
+                        MLPrediction.created_at >= datetime.utcnow() - timedelta(hours=1)
+                    ).all()
+                    
+                    if len(predictions) < 3:  # Need at least 3 model predictions
+                        continue
+                    
+                    # Apply AI-powered weighted consensus algorithm
+                    model_weights = {
+                        'transformer': 1.25,
+                        'lstm': 1.20,
+                        'xgboost': 1.15,
+                        'random_forest': 1.10,
+                        'svm': 1.05
+                    }
+                    
+                    long_score = 0
+                    short_score = 0
+                    total_weight = 0
+                    
+                    for pred in predictions:
+                        weight = model_weights.get(pred.model_type.lower(), 1.0)
+                        total_weight += weight
+                        
+                        if pred.prediction == 'LONG':
+                            long_score += weight * (pred.confidence / 100)
+                        else:
+                            short_score += weight * (pred.confidence / 100)
+                    
+                    if total_weight == 0:
+                        continue
+                    
+                    # Normalize scores
+                    long_confidence = long_score / total_weight
+                    short_confidence = short_score / total_weight
+                    
+                    # Determine signal strength
+                    max_confidence = max(long_confidence, short_confidence)
+                    decision_margin = abs(long_confidence - short_confidence)
+                    
+                    # Signal criteria: confidence >= 75% AND margin >= 0.3
+                    signal_threshold = 0.75
+                    margin_threshold = 0.3
+                    
+                    if max_confidence >= signal_threshold and decision_margin >= margin_threshold:
+                        signals_generated += 1
+                        signal_side = 'LONG' if long_confidence > short_confidence else 'SHORT'
+                        
+                        logger.info(f"🎯 SIGNAL GENERATED: {coin.symbol} - {signal_side} "
+                                  f"(Confidence: {max_confidence:.1%}, Margin: {decision_margin:.2f})")
+                        
+                        # Get strategy for this coin
+                        strategy = db.query(TradingStrategy).filter(
+                            TradingStrategy.coin_symbol == coin.symbol,
+                            TradingStrategy.is_active == True
+                        ).first()
+                        
+                        if strategy:
+                            # Execute trade using trading engine
+                            try:
+                                await trading_engine.execute_signal_trade(
+                                    coin_symbol=coin.symbol,
+                                    signal_side=signal_side,
+                                    confidence=max_confidence,
+                                    strategy=strategy
+                                )
+                                trades_executed += 1
+                                logger.info(f"✅ TRADE EXECUTED: {coin.symbol} - {signal_side}")
+                            except Exception as trade_error:
+                                logger.error(f"❌ Trade execution failed for {coin.symbol}: {trade_error}")
+                
+                except Exception as coin_error:
+                    logger.error(f"Error processing signals for {coin.symbol}: {coin_error}")
+                    continue
+            
+            logger.info(f"📈 Signal monitoring cycle completed: {signals_generated} signals, {trades_executed} trades executed")
+            db.close()
+            
+        except Exception as e:
+            logger.error(f"Error in live signal monitoring: {e}")
+        
+        # Wait 30 seconds before next check
+        await asyncio.sleep(30)
 
 if __name__ == "__main__":
     import uvicorn

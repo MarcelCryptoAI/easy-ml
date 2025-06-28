@@ -298,11 +298,12 @@ export const StrategyConfig: React.FC = () => {
         </Box>
       </Box>
 
-      <Alert severity="success" sx={{ mb: 3 }}>
-        <strong>🤖 AI-Powered Trading Logic:</strong> Our advanced AI system automatically determines optimal trading signals by:
-        <br />• <strong>Weighted Model Consensus:</strong> Each model type has different weights based on performance (Transformer: 1.25x, LSTM: 1.2x, XGBoost: 1.15x, etc.)
-        <br />• <strong>Confidence-Based Scoring:</strong> Combines model weights × confidence scores × vote margins for intelligent decision making
-        <br />• <strong>Automatic Thresholds:</strong> AI only trades when confidence ≥ 75% AND decision margin ≥ 0.3 (no manual tuning needed)
+      <Alert severity="info" sx={{ mb: 3 }}>
+        <strong>🚀 LIVE TRADING CRITERIA:</strong> The system generates trading signals when coin strategies meet these requirements:
+        <br />• <strong>Signal Generation:</strong> AI weighted model consensus ≥ 75% confidence + decision margin ≥ 0.3
+        <br />• <strong>Trade Execution:</strong> Signal must match strategy settings (leverage, position size, TP/SL levels)
+        <br />• <strong>Risk Management:</strong> Automatic position sizing based on account balance and configured percentages
+        <br />• <strong>Live Status:</strong> 🟢 System continuously monitors and executes trades when criteria are met
       </Alert>
 
       <TableContainer component={Paper}>

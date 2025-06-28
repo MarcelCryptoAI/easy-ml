@@ -1,10 +1,4 @@
 import React, { useState } from 'react';
-import {
-  Container,
-  Tabs,
-  Tab,
-  Box
-} from '@mui/material';
 import { Dashboard } from '../components/Dashboard';
 import { CoinAnalysis } from '../components/CoinAnalysis';
 import { MLProgress } from '../components/MLProgress';
@@ -17,87 +11,48 @@ import { ModernTradingDashboard } from '../components/ModernTradingDashboard';
 import { TradingControl } from '../components/TradingControl';
 import { StatusTopBar } from '../components/StatusTopBar';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box>{children}</Box>}
-    </div>
-  );
-}
-
 export default function Home() {
-  const [tabValue, setTabValue] = useState(0);
+  const [activeTab, setActiveTab] = useState(0);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
+  const tabs = [
+    { id: 0, label: '🚀 Trading Dashboard', component: <ModernTradingDashboard onNavigate={setActiveTab} /> },
+    { id: 1, label: '🎮 Trading Control', component: <TradingControl /> },
+    { id: 2, label: '📊 ML Progress', component: <MLProgress /> },
+    { id: 3, label: '🔧 Training Status', component: <TrainingStatus /> },
+    { id: 4, label: '📡 Signals', component: <TradingSignals /> },
+    { id: 5, label: '⚙️ Strategy Config', component: <StrategyConfig /> },
+    { id: 6, label: '🤖 AI Optimizer', component: <StrategyOptimizer /> },
+    { id: 7, label: '📈 Coin Analysis', component: <CoinAnalysis /> }
+  ];
 
   return (
-    <>
-      {tabValue !== 0 && <StatusTopBar />}
+    <div className="min-h-screen bg-black text-white">
+      {/* Status Top Bar - Always Visible */}
+      <StatusTopBar />
 
-      <Container maxWidth={false} disableGutters>
-        {tabValue !== 0 && (
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="main navigation">
-              <Tab label="🚀 Trading Dashboard" />
-              <Tab label="🎮 Trading Control" />
-              <Tab label="📊 ML Progress" />
-              <Tab label="🔧 Training Status" />
-              <Tab label="📡 Signals" />
-              <Tab label="⚙️ Strategy Config" />
-              <Tab label="🤖 AI Optimizer" />
-              <Tab label="📈 Coin Analysis" />
-            </Tabs>
-          </Box>
-        )}
+      {/* Navigation Menu - Full Width */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700/50">
+        <div className="flex items-center px-6 py-2 overflow-x-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-6 py-3 mx-2 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-gradient-to-r from-cyan-500/30 to-purple-500/30 border border-cyan-500/50 text-cyan-400 shadow-[0_0_20px_rgba(0,255,255,0.3)]'
+                  : 'bg-black/30 border border-gray-700/50 text-gray-400 hover:bg-gray-700/30 hover:text-gray-300 hover:border-gray-600/50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        <TabPanel value={tabValue} index={0}>
-          <ModernTradingDashboard onNavigate={setTabValue} />
-        </TabPanel>
-        
-        <TabPanel value={tabValue} index={1}>
-          <TradingControl />
-        </TabPanel>
-        
-        <TabPanel value={tabValue} index={2}>
-          <MLProgress />
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={3}>
-          <TrainingStatus />
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={4}>
-          <TradingSignals />
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={5}>
-          <StrategyConfig />
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={6}>
-          <StrategyOptimizer />
-        </TabPanel>
-        
-        <TabPanel value={tabValue} index={7}>
-          <CoinAnalysis />
-        </TabPanel>
-      </Container>
-    </>
+      {/* Content Area */}
+      <div className="relative">
+        {tabs[activeTab]?.component}
+      </div>
+    </div>
   );
 }
