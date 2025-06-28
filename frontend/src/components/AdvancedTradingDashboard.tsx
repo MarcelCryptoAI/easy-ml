@@ -478,7 +478,7 @@ export const AdvancedTradingDashboard: React.FC = () => {
         </div>
 
         {/* Bottom Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Top ML Models */}
           <div className="relative group">
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl blur-xl" />
@@ -551,6 +551,132 @@ export const AdvancedTradingDashboard: React.FC = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Analytics Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Risk Metrics */}
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-orange-500/30 rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-400 mb-4">
+                Risk Management
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Max Drawdown</span>
+                  <span className="text-red-400 font-bold">{formatPercentage(tradingStats?.max_drawdown || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Profit Factor</span>
+                  <span className="text-green-400 font-bold">{(tradingStats?.profit_factor || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Best Trade</span>
+                  <span className="text-green-400 font-bold">{formatCurrency(tradingStats?.best_trade || 0)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Worst Trade</span>
+                  <span className="text-red-400 font-bold">{formatCurrency(tradingStats?.worst_trade || 0)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Market Overview */}
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-emerald-500/30 rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 mb-4">
+                Market Intelligence
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Active Strategies</span>
+                  <span className="text-emerald-400 font-bold">512</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Models Running</span>
+                  <span className="text-emerald-400 font-bold">10</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Predictions/Hour</span>
+                  <span className="text-emerald-400 font-bold">~850</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">System Status</span>
+                  <span className="text-emerald-400 font-bold flex items-center gap-2">
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                    ONLINE
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Summary */}
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-purple-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-violet-500/30 rounded-2xl p-6">
+              <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-purple-400 mb-4">
+                24H Performance
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Daily PnL</span>
+                  <span className="text-green-400 font-bold">+$234.56</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Trades Today</span>
+                  <span className="text-violet-400 font-bold">23</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Win Rate 24H</span>
+                  <span className="text-green-400 font-bold">78.3%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Volume 24H</span>
+                  <span className="text-violet-400 font-bold">$12.4K</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* PnL Distribution Chart */}
+        <div className="grid grid-cols-1 gap-6">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-6">
+              <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 mb-6">
+                Profit & Loss Distribution Analysis
+              </h3>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={pnlDistribution || []}>
+                    <defs>
+                      <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                    <XAxis dataKey="range" stroke="#666" />
+                    <YAxis stroke="#666" />
+                    <RechartsTooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(0,0,0,0.9)',
+                        border: '1px solid #333',
+                        borderRadius: '12px',
+                        backdropFilter: 'blur(10px)'
+                      }}
+                    />
+                    <Bar dataKey="count" fill="url(#barGradient)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>

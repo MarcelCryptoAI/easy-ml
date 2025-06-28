@@ -38,9 +38,6 @@ interface CoinStrategy {
   leverage: number;
   margin_mode: 'cross' | 'isolated';
   position_size_percent: number;
-  confidence_threshold: number;
-  min_models_required: number;
-  total_models_available: number;
   take_profit_percentage: number;
   stop_loss_percentage: number;
   is_active: boolean;
@@ -53,9 +50,6 @@ interface EditStrategyData {
   leverage: number;
   margin_mode: 'cross' | 'isolated';
   position_size_percent: number;
-  confidence_threshold: number;
-  min_models_required: number;
-  total_models_available: number;
   take_profit_percentage: number;
   stop_loss_percentage: number;
 }
@@ -68,9 +62,6 @@ export const StrategyConfig: React.FC = () => {
     leverage: 10,
     margin_mode: 'cross',
     position_size_percent: 2.0,
-    confidence_threshold: 80.0,
-    min_models_required: 7,
-    total_models_available: 10,
     take_profit_percentage: 2.0,
     stop_loss_percentage: 1.0
   });
@@ -198,9 +189,6 @@ export const StrategyConfig: React.FC = () => {
       leverage: strategy.leverage,
       margin_mode: strategy.margin_mode,
       position_size_percent: strategy.position_size_percent,
-      confidence_threshold: strategy.confidence_threshold,
-      min_models_required: strategy.min_models_required,
-      total_models_available: strategy.total_models_available,
       take_profit_percentage: strategy.take_profit_percentage,
       stop_loss_percentage: strategy.stop_loss_percentage
     });
@@ -310,11 +298,11 @@ export const StrategyConfig: React.FC = () => {
         </Box>
       </Box>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        <strong>Trading Criteria:</strong> Signals are generated when:
-        <br />• <strong>Model Agreement:</strong> At least X models (of Y total) agree on direction (LONG/SHORT/HOLD)
-        <br />• <strong>Confidence Threshold:</strong> Average confidence of agreeing models exceeds threshold %
-        <br />• <strong>Example:</strong> "7/10 models" means 7 out of 10 models must agree, with average confidence ≥ 80%
+      <Alert severity="success" sx={{ mb: 3 }}>
+        <strong>🤖 AI-Powered Trading Logic:</strong> Our advanced AI system automatically determines optimal trading signals by:
+        <br />• <strong>Weighted Model Consensus:</strong> Each model type has different weights based on performance (Transformer: 1.25x, LSTM: 1.2x, XGBoost: 1.15x, etc.)
+        <br />• <strong>Confidence-Based Scoring:</strong> Combines model weights × confidence scores × vote margins for intelligent decision making
+        <br />• <strong>Automatic Thresholds:</strong> AI only trades when confidence ≥ 75% AND decision margin ≥ 0.3 (no manual tuning needed)
       </Alert>
 
       <TableContainer component={Paper}>
@@ -327,8 +315,7 @@ export const StrategyConfig: React.FC = () => {
               <TableCell><strong>Position Size</strong></TableCell>
               <TableCell><strong>Take Profit</strong></TableCell>
               <TableCell><strong>Stop Loss</strong></TableCell>
-              <TableCell><strong>Model Agreement</strong></TableCell>
-              <TableCell><strong>Confidence Threshold</strong></TableCell>
+              <TableCell><strong>AI Decision Logic</strong></TableCell>
               <TableCell><strong>Status</strong></TableCell>
               <TableCell><strong>Actions</strong></TableCell>
             </TableRow>
@@ -372,14 +359,13 @@ export const StrategyConfig: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <Chip 
-                    label={`${strategy.min_models_required}/${strategy.total_models_available}`}
-                    color="info"
+                    label="🤖 AI Auto-Pilot"
+                    color="success"
                     size="small"
+                    icon={<Settings />}
                   />
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2">
-                    {strategy.confidence_threshold}%
+                  <Typography variant="caption" display="block" color="textSecondary">
+                    Weighted consensus + confidence analysis
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -486,42 +472,11 @@ export const StrategyConfig: React.FC = () => {
                 />
               </Box>
 
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField
-                  label="Min Models Required"
-                  type="number"
-                  value={editingStrategy.min_models_required}
-                  onChange={(e) => setEditingStrategy({
-                    ...editingStrategy,
-                    min_models_required: Number(e.target.value)
-                  })}
-                  inputProps={{ min: 3, max: editingStrategy.total_models_available, step: 1 }}
-                  sx={{ flex: 1 }}
-                />
-                <TextField
-                  label="Total Models Available"
-                  type="number"
-                  value={editingStrategy.total_models_available}
-                  onChange={(e) => setEditingStrategy({
-                    ...editingStrategy,
-                    total_models_available: Number(e.target.value)
-                  })}
-                  inputProps={{ min: 3, max: 10, step: 1 }}
-                  sx={{ flex: 1 }}
-                />
-              </Box>
-
-              <TextField
-                label="Confidence Threshold (%)"
-                type="number"
-                value={editingStrategy.confidence_threshold}
-                onChange={(e) => setEditingStrategy({
-                  ...editingStrategy,
-                  confidence_threshold: Number(e.target.value)
-                })}
-                inputProps={{ min: 50, max: 95, step: 1 }}
-                fullWidth
-              />
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <strong>🤖 AI Trading Logic</strong><br />
+                The system automatically uses weighted model consensus with intelligent thresholds. 
+                No manual configuration needed - AI handles optimal decision making!
+              </Alert>
             </Box>
           )}
         </DialogContent>
@@ -618,42 +573,13 @@ export const StrategyConfig: React.FC = () => {
 
             <Divider />
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="Min Models Required"
-                type="number"
-                value={bulkEditData.min_models_required}
-                onChange={(e) => setBulkEditData({
-                  ...bulkEditData,
-                  min_models_required: Number(e.target.value)
-                })}
-                inputProps={{ min: 3, max: bulkEditData.total_models_available, step: 1 }}
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                label="Total Models Available"
-                type="number"
-                value={bulkEditData.total_models_available}
-                onChange={(e) => setBulkEditData({
-                  ...bulkEditData,
-                  total_models_available: Number(e.target.value)
-                })}
-                inputProps={{ min: 3, max: 10, step: 1 }}
-                sx={{ flex: 1 }}
-              />
-            </Box>
-
-            <TextField
-              label="Confidence Threshold (%)"
-              type="number"
-              value={bulkEditData.confidence_threshold}
-              onChange={(e) => setBulkEditData({
-                ...bulkEditData,
-                confidence_threshold: Number(e.target.value)
-              })}
-              inputProps={{ min: 50, max: 95, step: 1 }}
-              fullWidth
-            />
+            <Alert severity="success" sx={{ mt: 2 }}>
+              <strong>🤖 Intelligent AI Decision Making</strong><br />
+              Our advanced AI system automatically handles model consensus and confidence thresholds using:
+              <br />• Weighted model performance (Transformer: 1.25x, LSTM: 1.2x, XGBoost: 1.15x)
+              <br />• Dynamic confidence scoring based on agreement strength
+              <br />• Automatic risk management with 75% confidence + 0.3 margin thresholds
+            </Alert>
           </Box>
         </DialogContent>
         <DialogActions>

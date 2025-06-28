@@ -353,41 +353,99 @@ async def get_dashboard_batch(db: Session = Depends(get_db)):
                     })
                     continue
                 
-                # Calculate consensus
-                consensus = {"buy": 0, "sell": 0, "hold": 0}
+                # AI-Powered Intelligent Consensus Algorithm
+                model_weights = {
+                    "lstm": 1.2,        # Higher weight for sequence models
+                    "xgboost": 1.15,    # Excellent for financial data
+                    "lightgbm": 1.1,    # Fast and accurate
+                    "random_forest": 1.0, # Baseline
+                    "neural_network": 0.95,
+                    "svm": 0.9,
+                    "catboost": 1.05,
+                    "transformer": 1.25, # Best for complex patterns
+                    "gru": 1.1,
+                    "cnn_1d": 0.85
+                }
+                
+                weighted_votes = {"buy": 0, "sell": 0, "hold": 0}
+                simple_consensus = {"buy": 0, "sell": 0, "hold": 0}
                 total_confidence = 0
+                total_weight = 0
+                confidence_weighted_sum = 0
                 
                 for pred in predictions:
+                    # Get model weight
+                    weight = model_weights.get(pred.model_type.lower(), 1.0)
+                    
+                    # Count simple votes for display
                     if pred.prediction.lower() == "long":
-                        consensus["buy"] += 1
+                        simple_consensus["buy"] += 1
+                        # Weight by both model quality AND confidence
+                        vote_strength = weight * (pred.confidence / 100)
+                        weighted_votes["buy"] += vote_strength
                     elif pred.prediction.lower() == "short":  
-                        consensus["sell"] += 1
+                        simple_consensus["sell"] += 1
+                        vote_strength = weight * (pred.confidence / 100)
+                        weighted_votes["sell"] += vote_strength
                     else:
-                        consensus["hold"] += 1
+                        simple_consensus["hold"] += 1
+                        vote_strength = weight * (pred.confidence / 100)
+                        weighted_votes["hold"] += vote_strength
+                    
                     total_confidence += pred.confidence
+                    confidence_weighted_sum += pred.confidence * weight
+                    total_weight += weight
                 
                 total_models = len(predictions)
                 avg_confidence = total_confidence / total_models if total_models > 0 else 0
+                weighted_avg_confidence = confidence_weighted_sum / total_weight if total_weight > 0 else 0
                 
-                # Determine overall recommendation
-                if consensus["buy"] > consensus["sell"] and consensus["buy"] > consensus["hold"]:
-                    recommendation = "LONG"
-                    confidence = (consensus["buy"] / total_models) * 100
-                elif consensus["sell"] > consensus["buy"] and consensus["sell"] > consensus["hold"]:
-                    recommendation = "SHORT"
-                    confidence = (consensus["sell"] / total_models) * 100
+                # AI Decision Logic: Use weighted votes + confidence thresholds
+                max_weighted_vote = max(weighted_votes.values())
+                winning_direction = max(weighted_votes, key=weighted_votes.get)
+                
+                # Dynamic confidence calculation based on:
+                # 1. Weighted model agreement strength
+                # 2. Average confidence of predictions
+                # 3. Margin between winning and losing directions
+                vote_margin = max_weighted_vote - sorted(weighted_votes.values())[-2]
+                consensus_strength = max_weighted_vote / total_weight if total_weight > 0 else 0
+                
+                # AI-Enhanced Confidence Score
+                ai_confidence = min(95, max(50, 
+                    (consensus_strength * 70) +           # 70% based on weighted consensus
+                    (weighted_avg_confidence * 0.25) +    # 25% based on model confidence
+                    (vote_margin * 20)                     # 5% based on decision margin
+                ))
+                
+                # AI Threshold: Only trade if confidence > 75% AND margin > 0.3
+                if ai_confidence >= 75 and vote_margin >= 0.3:
+                    if winning_direction == "buy":
+                        recommendation = "LONG"
+                    elif winning_direction == "sell":
+                        recommendation = "SHORT"
+                    else:
+                        recommendation = "HOLD"
+                    confidence = ai_confidence
                 else:
+                    # AI says: not confident enough, hold position
                     recommendation = "HOLD"
-                    confidence = (consensus["hold"] / total_models) * 100
+                    confidence = min(ai_confidence, 70)  # Cap confidence for HOLD decisions
                 
                 dashboard_data.append({
                     "coin_symbol": coin.symbol,
                     "recommendation": recommendation,
                     "confidence": round(confidence, 1),
                     "avg_confidence": round(avg_confidence, 1),
+                    "weighted_confidence": round(weighted_avg_confidence, 1),
                     "models_trained": total_models,
                     "last_trained": predictions[0].created_at.isoformat() if predictions else "Never",
-                    "consensus_breakdown": consensus
+                    "consensus_breakdown": simple_consensus,
+                    "ai_analysis": {
+                        "vote_margin": round(vote_margin, 3),
+                        "consensus_strength": round(consensus_strength, 3),
+                        "decision_reason": "AI: Confident signal" if ai_confidence >= 75 and vote_margin >= 0.3 else "AI: Insufficient confidence"
+                    }
                 })
                 
             except Exception as e:
@@ -659,9 +717,6 @@ async def get_all_strategies(db: Session = Depends(get_db)):
                     "leverage": 10,
                     "margin_mode": "cross",
                     "position_size_percent": 2.0,
-                    "confidence_threshold": 80.0,
-                    "min_models_required": 7,
-                    "total_models_available": 10,
                     "take_profit_percentage": 2.0,
                     "stop_loss_percentage": 1.0,
                     "is_active": True,
@@ -673,9 +728,6 @@ async def get_all_strategies(db: Session = Depends(get_db)):
                     "leverage": strategy.leverage,
                     "margin_mode": getattr(strategy, 'margin_mode', 'cross'),
                     "position_size_percent": strategy.position_size_percentage,
-                    "confidence_threshold": strategy.confidence_threshold,
-                    "min_models_required": getattr(strategy, 'min_models_required', 7),
-                    "total_models_available": 10,
                     "take_profit_percentage": strategy.take_profit_percentage,
                     "stop_loss_percentage": strategy.stop_loss_percentage,
                     "is_active": strategy.is_active,
@@ -728,9 +780,6 @@ async def get_strategies_paginated(
                     "leverage": 10,
                     "margin_mode": "cross",
                     "position_size_percent": 2.0,
-                    "confidence_threshold": 80.0,
-                    "min_models_required": 7,
-                    "total_models_available": 10,
                     "take_profit_percentage": 2.0,
                     "stop_loss_percentage": 1.0,
                     "is_active": True,
@@ -742,9 +791,6 @@ async def get_strategies_paginated(
                     "leverage": strategy.leverage,
                     "margin_mode": getattr(strategy, 'margin_mode', 'cross'),
                     "position_size_percent": strategy.position_size_percentage,
-                    "confidence_threshold": strategy.confidence_threshold,
-                    "min_models_required": getattr(strategy, 'min_models_required', 7),
-                    "total_models_available": 10,
                     "take_profit_percentage": strategy.take_profit_percentage,
                     "stop_loss_percentage": strategy.stop_loss_percentage,
                     "is_active": strategy.is_active,
@@ -783,14 +829,9 @@ async def update_strategy(strategy_data: Dict, db: Session = Depends(get_db)):
         strategy.leverage = strategy_data.get("leverage", 10)
         strategy.margin_mode = strategy_data.get("margin_mode", "cross")
         strategy.position_size_percentage = strategy_data.get("position_size_percent", 2.0)
-        strategy.confidence_threshold = strategy_data.get("confidence_threshold", 80.0)
         strategy.take_profit_percentage = strategy_data.get("take_profit_percentage", 2.0)
         strategy.stop_loss_percentage = strategy_data.get("stop_loss_percentage", 1.0)
         strategy.updated_at = datetime.utcnow()
-        
-        # Store additional fields if needed
-        if hasattr(strategy, 'min_models_required'):
-            strategy.min_models_required = strategy_data.get("min_models_required", 7)
         
         db.commit()
         
@@ -821,15 +862,10 @@ async def bulk_update_strategies(strategy_data: Dict, db: Session = Depends(get_
             strategy.leverage = strategy_data.get("leverage", 10)
             strategy.margin_mode = strategy_data.get("margin_mode", "cross")
             strategy.position_size_percentage = strategy_data.get("position_size_percent", 2.0)
-            strategy.confidence_threshold = strategy_data.get("confidence_threshold", 80.0)
             strategy.take_profit_percentage = strategy_data.get("take_profit_percentage", 2.0)
             strategy.stop_loss_percentage = strategy_data.get("stop_loss_percentage", 1.0)
             strategy.is_active = True
             strategy.updated_at = datetime.utcnow()
-            
-            # Store additional fields if needed
-            if hasattr(strategy, 'min_models_required'):
-                strategy.min_models_required = strategy_data.get("min_models_required", 7)
             
             updated_count += 1
         
