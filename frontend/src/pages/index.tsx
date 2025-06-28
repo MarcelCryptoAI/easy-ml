@@ -13,7 +13,7 @@ import { StrategyConfig } from '../components/StrategyConfig';
 import { TradingSignals } from '../components/TradingSignals';
 import { TrainingStatus } from '../components/TrainingStatus';
 import { StrategyOptimizer } from '../components/StrategyOptimizer';
-import { CompactTradingDashboard } from '../components/CompactTradingDashboard';
+import { AdvancedTradingDashboard } from '../components/AdvancedTradingDashboard';
 import { TradingControl } from '../components/TradingControl';
 import { StatusTopBar } from '../components/StatusTopBar';
 
@@ -65,7 +65,7 @@ export default function Home() {
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <CompactTradingDashboard />
+          <AdvancedTradingDashboard />
         </TabPanel>
         
         <TabPanel value={tabValue} index={1}>
