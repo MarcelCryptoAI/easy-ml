@@ -104,10 +104,16 @@ export const TrainingStatus: React.FC = () => {
     status: trainingInfo.status,
     total_coins: trainingInfo.total_coins,
     completed_predictions: trainingInfo.completed_predictions,
-    overall_progress: trainingInfo.overall_percentage
+    overall_progress: trainingInfo.overall_percentage,
+    completed_items: trainingInfo.completed_predictions || 0,
+    total_queue_items: trainingInfo.total_coins || 0,
+    remaining_models: (trainingInfo.total_coins || 0) - (trainingInfo.completed_predictions || 0),
+    eta_seconds: trainingInfo.eta_seconds || 0,
+    session_start_time: trainingInfo.session_start_time || new Date().toISOString(),
+    estimated_completion_time: trainingInfo.estimated_completion_time || new Date().toISOString()
   } : null;
 
-  const trainingQueue = trainingStats?.recent_activity?.map((activity, index) => ({
+  const trainingQueue = trainingStats?.recent_activity?.map((activity: any, index: number) => ({
     coin_symbol: activity.coin_symbol,
     model_type: activity.model_type,
     status: 'completed' as const,
@@ -353,7 +359,7 @@ export const TrainingStatus: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {trainingQueue.map((item, index) => (
+                  {trainingQueue.map((item: any, index: number) => (
                     <TableRow key={`${item.coin_symbol}-${item.model_type}`}>
                       <TableCell>
                         <Typography variant="body2" fontWeight="bold">

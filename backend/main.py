@@ -799,6 +799,53 @@ async def update_strategy(strategy_data: Dict, db: Session = Depends(get_db)):
         logger.error(f"Error updating strategy: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/strategies/bulk-update")
+async def bulk_update_strategies(strategy_data: Dict, db: Session = Depends(get_db)):
+    """Bulk update all strategies with the same configuration"""
+    try:
+        # Get all active coins
+        coins = db.query(Coin).filter(Coin.is_active == True).all()
+        updated_count = 0
+        
+        for coin in coins:
+            # Get or create strategy for each coin
+            strategy = db.query(TradingStrategy).filter(
+                TradingStrategy.coin_symbol == coin.symbol
+            ).first()
+            
+            if not strategy:
+                strategy = TradingStrategy(coin_symbol=coin.symbol)
+                db.add(strategy)
+            
+            # Update strategy fields
+            strategy.leverage = strategy_data.get("leverage", 10)
+            strategy.margin_mode = strategy_data.get("margin_mode", "cross")
+            strategy.position_size_percentage = strategy_data.get("position_size_percent", 2.0)
+            strategy.confidence_threshold = strategy_data.get("confidence_threshold", 80.0)
+            strategy.take_profit_percentage = strategy_data.get("take_profit_percentage", 2.0)
+            strategy.stop_loss_percentage = strategy_data.get("stop_loss_percentage", 1.0)
+            strategy.is_active = True
+            strategy.updated_at = datetime.utcnow()
+            
+            # Store additional fields if needed
+            if hasattr(strategy, 'min_models_required'):
+                strategy.min_models_required = strategy_data.get("min_models_required", 7)
+            
+            updated_count += 1
+        
+        db.commit()
+        
+        logger.info(f"Bulk updated {updated_count} strategies")
+        return {
+            "success": True, 
+            "message": f"Successfully updated {updated_count} strategies",
+            "updated_count": updated_count
+        }
+    except Exception as e:
+        logger.error(f"Error in bulk update strategies: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/signals")
 async def get_trading_signals(db: Session = Depends(get_db)):
     """Get autonomous trading signals from AI advisor"""

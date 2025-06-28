@@ -26,9 +26,10 @@ import {
   InputAdornment,
   LinearProgress,
   ToggleButton,
-  ToggleButtonGroup
+  ToggleButtonGroup,
+  Divider
 } from '@mui/material';
-import { Edit, Settings, Search, ViewList, ViewModule } from '@mui/icons-material';
+import { Edit, Settings, Search, ViewList, ViewModule, EditNote } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
@@ -62,6 +63,17 @@ interface EditStrategyData {
 export const StrategyConfig: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingStrategy, setEditingStrategy] = useState<EditStrategyData | null>(null);
+  const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false);
+  const [bulkEditData, setBulkEditData] = useState<Omit<EditStrategyData, 'coin_symbol'>>({
+    leverage: 10,
+    margin_mode: 'cross',
+    position_size_percent: 2.0,
+    confidence_threshold: 80.0,
+    min_models_required: 7,
+    total_models_available: 10,
+    take_profit_percentage: 2.0,
+    stop_loss_percentage: 1.0
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -160,6 +172,26 @@ export const StrategyConfig: React.FC = () => {
     }
   });
 
+  const bulkUpdateStrategiesMutation = useMutation({
+    mutationFn: async (data: Omit<EditStrategyData, 'coin_symbol'>) => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/strategies/bulk-update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to bulk update strategies');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast.success(`Successfully updated ${data.updated_count} strategies`);
+      setBulkEditDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['strategy-config'] });
+    },
+    onError: () => {
+      toast.error('Failed to bulk update strategies');
+    }
+  });
+
   const handleEditStrategy = (strategy: CoinStrategy) => {
     setEditingStrategy({
       coin_symbol: strategy.coin_symbol,
@@ -179,6 +211,10 @@ export const StrategyConfig: React.FC = () => {
     if (editingStrategy) {
       updateStrategyMutation.mutate(editingStrategy);
     }
+  };
+
+  const handleBulkSave = () => {
+    bulkUpdateStrategiesMutation.mutate(bulkEditData);
   };
 
   const getMarginModeColor = (mode: string) => {
@@ -214,11 +250,21 @@ export const StrategyConfig: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4">⚙️ Strategy Configuration</Typography>
-        <Chip 
-          label={`${totalStrategies} Total Coins`} 
-          color="primary" 
-          variant="outlined"
-        />
+        <Box display="flex" alignItems="center" gap={2}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<EditNote />}
+            onClick={() => setBulkEditDialogOpen(true)}
+          >
+            Bulk Edit All
+          </Button>
+          <Chip 
+            label={`${totalStrategies} Total Coins`} 
+            color="primary" 
+            variant="outlined"
+          />
+        </Box>
       </Box>
 
       {/* Search and Filters */}
@@ -487,6 +533,138 @@ export const StrategyConfig: React.FC = () => {
             disabled={updateStrategyMutation.isPending}
           >
             Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Edit Dialog */}
+      <Dialog open={bulkEditDialogOpen} onClose={() => setBulkEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Bulk Edit All Strategies
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+            This will update all {totalStrategies} coins with the same settings
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            <strong>Warning:</strong> This will apply these settings to ALL coins. Individual coin settings will be overwritten.
+          </Alert>
+          
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="Leverage"
+              type="number"
+              value={bulkEditData.leverage}
+              onChange={(e) => setBulkEditData({
+                ...bulkEditData,
+                leverage: Number(e.target.value)
+              })}
+              inputProps={{ min: 1, max: 125 }}
+              fullWidth
+            />
+            
+            <FormControl fullWidth>
+              <InputLabel>Margin Mode</InputLabel>
+              <Select
+                value={bulkEditData.margin_mode}
+                onChange={(e) => setBulkEditData({
+                  ...bulkEditData,
+                  margin_mode: e.target.value as 'cross' | 'isolated'
+                })}
+              >
+                <MenuItem value="cross">Cross Margin</MenuItem>
+                <MenuItem value="isolated">Isolated Margin</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Position Size (%)"
+              type="number"
+              value={bulkEditData.position_size_percent}
+              onChange={(e) => setBulkEditData({
+                ...bulkEditData,
+                position_size_percent: Number(e.target.value)
+              })}
+              inputProps={{ min: 0.1, max: 100, step: 0.1 }}
+              fullWidth
+            />
+
+            <Divider />
+
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Take Profit (%)"
+                type="number"
+                value={bulkEditData.take_profit_percentage}
+                onChange={(e) => setBulkEditData({
+                  ...bulkEditData,
+                  take_profit_percentage: Number(e.target.value)
+                })}
+                inputProps={{ min: 0.1, max: 50, step: 0.1 }}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                label="Stop Loss (%)"
+                type="number"
+                value={bulkEditData.stop_loss_percentage}
+                onChange={(e) => setBulkEditData({
+                  ...bulkEditData,
+                  stop_loss_percentage: Number(e.target.value)
+                })}
+                inputProps={{ min: 0.1, max: 20, step: 0.1 }}
+                sx={{ flex: 1 }}
+              />
+            </Box>
+
+            <Divider />
+
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Min Models Required"
+                type="number"
+                value={bulkEditData.min_models_required}
+                onChange={(e) => setBulkEditData({
+                  ...bulkEditData,
+                  min_models_required: Number(e.target.value)
+                })}
+                inputProps={{ min: 3, max: bulkEditData.total_models_available, step: 1 }}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                label="Total Models Available"
+                type="number"
+                value={bulkEditData.total_models_available}
+                onChange={(e) => setBulkEditData({
+                  ...bulkEditData,
+                  total_models_available: Number(e.target.value)
+                })}
+                inputProps={{ min: 3, max: 10, step: 1 }}
+                sx={{ flex: 1 }}
+              />
+            </Box>
+
+            <TextField
+              label="Confidence Threshold (%)"
+              type="number"
+              value={bulkEditData.confidence_threshold}
+              onChange={(e) => setBulkEditData({
+                ...bulkEditData,
+                confidence_threshold: Number(e.target.value)
+              })}
+              inputProps={{ min: 50, max: 95, step: 1 }}
+              fullWidth
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkEditDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            color="warning"
+            onClick={handleBulkSave}
+            disabled={bulkUpdateStrategiesMutation.isPending}
+          >
+            Apply to All {totalStrategies} Coins
           </Button>
         </DialogActions>
       </Dialog>

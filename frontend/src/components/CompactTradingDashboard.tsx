@@ -59,9 +59,9 @@ export const CompactTradingDashboard: React.FC = () => {
   });
 
   // Get trading recommendations for all coins using batch endpoint
-  const { data: dashboardData = [], isLoading, refetch } = useQuery({
+  const { data: dashboardData = [], isLoading, refetch } = useQuery<CoinData[]>({
     queryKey: ['compact-dashboard'],
-    queryFn: async () => {
+    queryFn: async (): Promise<CoinData[]> => {
       try {
         // Use the new batch endpoint to get all dashboard data in one request
         const response = await fetch(
