@@ -13,7 +13,7 @@ import { StrategyConfig } from '../components/StrategyConfig';
 import { TradingSignals } from '../components/TradingSignals';
 import { TrainingStatus } from '../components/TrainingStatus';
 import { StrategyOptimizer } from '../components/StrategyOptimizer';
-import { AdvancedTradingDashboard } from '../components/AdvancedTradingDashboard';
+import { ModernTradingDashboard } from '../components/ModernTradingDashboard';
 import { TradingControl } from '../components/TradingControl';
 import { StatusTopBar } from '../components/StatusTopBar';
 
@@ -48,24 +48,26 @@ export default function Home() {
 
   return (
     <>
-      <StatusTopBar />
+      {tabValue !== 0 && <StatusTopBar />}
 
       <Container maxWidth={false} disableGutters>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="main navigation">
-            <Tab label="🚀 Trading Dashboard" />
-            <Tab label="🎮 Trading Control" />
-            <Tab label="📊 ML Progress" />
-            <Tab label="🔧 Training Status" />
-            <Tab label="📡 Signals" />
-            <Tab label="⚙️ Strategy Config" />
-            <Tab label="🤖 AI Optimizer" />
-            <Tab label="📈 Coin Analysis" />
-          </Tabs>
-        </Box>
+        {tabValue !== 0 && (
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs value={tabValue} onChange={handleTabChange} aria-label="main navigation">
+              <Tab label="🚀 Trading Dashboard" />
+              <Tab label="🎮 Trading Control" />
+              <Tab label="📊 ML Progress" />
+              <Tab label="🔧 Training Status" />
+              <Tab label="📡 Signals" />
+              <Tab label="⚙️ Strategy Config" />
+              <Tab label="🤖 AI Optimizer" />
+              <Tab label="📈 Coin Analysis" />
+            </Tabs>
+          </Box>
+        )}
 
         <TabPanel value={tabValue} index={0}>
-          <AdvancedTradingDashboard />
+          <ModernTradingDashboard onNavigate={setTabValue} />
         </TabPanel>
         
         <TabPanel value={tabValue} index={1}>
