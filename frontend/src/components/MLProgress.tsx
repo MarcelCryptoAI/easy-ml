@@ -140,248 +140,231 @@ export const MLProgress: React.FC = () => {
           </button>
         </div>
 
-      {/* Enhanced Statistics */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={2}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total Coins
-              </Typography>
-              <Typography variant="h4" color="primary">
-                {totalCoins}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Active trading pairs
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} md={2}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Overall Progress
-              </Typography>
-              <Typography variant="h4" color="primary">
-                {overallProgress.toFixed(1)}%
-              </Typography>
-              <LinearProgress 
-                variant="determinate" 
-                value={overallProgress} 
-                sx={{ mt: 1 }}
-              />
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} md={2}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Complete (10/10)
-              </Typography>
-              <Typography variant="h4" color="success.main">
-                {completedCoins}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                All models trained
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+        {/* Enhanced Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-cyan-500/30 rounded-2xl p-6">
+              <p className="text-gray-400 text-sm mb-2">Total Coins</p>
+              <p className="text-4xl font-bold text-cyan-400">{totalCoins}</p>
+              <p className="text-gray-500 text-sm mt-2">Active trading pairs</p>
+            </div>
+          </div>
 
-        <Grid item xs={12} md={2}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Training
-              </Typography>
-              <Typography variant="h4" color="warning.main">
-                {trainingCoins}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                In progress
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6">
+              <p className="text-gray-400 text-sm mb-2">Overall Progress</p>
+              <p className="text-4xl font-bold text-purple-400">{overallProgress.toFixed(1)}%</p>
+              <div className="mt-3 h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-purple-400 to-pink-400 rounded-full transition-all duration-1000"
+                  style={{ width: `${overallProgress}%` }}
+                />
+              </div>
+            </div>
+          </div>
 
-        <Grid item xs={12} md={2}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Pending (0/10)
-              </Typography>
-              <Typography variant="h4" color="text.secondary">
-                {pendingCoins}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Not started
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-green-500/30 rounded-2xl p-6">
+              <p className="text-gray-400 text-sm mb-2">Complete (10/10)</p>
+              <p className="text-4xl font-bold text-green-400">{completedCoins}</p>
+              <p className="text-gray-500 text-sm mt-2">All models trained</p>
+            </div>
+          </div>
 
-        <Grid item xs={12} md={2}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total Models
-              </Typography>
-              <Typography variant="h4" color="info.main">
-                {mlStatus.reduce((sum, coin) => sum + coin.models_trained.length, 0)}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                of {totalCoins * 10} possible
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-yellow-500/30 rounded-2xl p-6">
+              <p className="text-gray-400 text-sm mb-2">Training</p>
+              <p className="text-4xl font-bold text-yellow-400">{trainingCoins}</p>
+              <p className="text-gray-500 text-sm mt-2">In progress</p>
+            </div>
+          </div>
 
-      {/* Connection Status */}
-      {coinsError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          ❌ Backend connection failed. Check if backend is running.
-          <br />Backend URL: {process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}
-        </Alert>
-      )}
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-500/20 to-gray-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-gray-500/30 rounded-2xl p-6">
+              <p className="text-gray-400 text-sm mb-2">Pending (0/10)</p>
+              <p className="text-4xl font-bold text-gray-400">{pendingCoins}</p>
+              <p className="text-gray-500 text-sm mt-2">Not started</p>
+            </div>
+          </div>
+        </div>
 
-      {/* Detailed Training Status */}
-      <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          Detailed Training Status (All {mlStatus.length} Coins)
-        </Typography>
-        
-        {isLoading ? (
-          <Alert severity="info">Loading ML training status...</Alert>
-        ) : coinsError ? (
-          <Alert severity="error">
-            Failed to load training status. Backend may be disconnected.
-          </Alert>
-        ) : mlStatus.length > 0 ? (
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Coin</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Models Trained</TableCell>
-                  <TableCell>Last Trained</TableCell>
-                  <TableCell>Avg Confidence</TableCell>
-                  <TableCell>Current Predictions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {mlStatus.map((status) => {
-                  const avgConfidence = Object.values(status.confidence_scores).length > 0
-                    ? Object.values(status.confidence_scores).reduce((a, b) => a + b, 0) / Object.values(status.confidence_scores).length
-                    : 0;
-
-                  return (
-                    <TableRow key={status.coin_symbol}>
-                      <TableCell>
-                        <Typography variant="subtitle2" fontWeight="bold">
-                          {status.coin_symbol}
-                        </Typography>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Chip 
-                          label={status.training_status}
-                          color={getStatusColor(status.training_status)}
-                          size="small"
-                        />
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Box display="flex" gap={0.5} flexWrap="wrap">
-                          {['lstm', 'random_forest', 'svm', 'neural_network', 'xgboost', 'lightgbm', 'catboost', 'transformer', 'gru', 'cnn_1d'].map((modelType) => {
-                            const isTrained = status.models_trained.includes(modelType);
-                            return (
-                              <Chip
-                                key={modelType}
-                                label={modelType.replace('_', ' ').toUpperCase()}
-                                color={isTrained ? getModelTypeColor(modelType) : 'default'}
-                                size="small"
-                                variant={isTrained ? "filled" : "outlined"}
-                                sx={{ 
-                                  opacity: isTrained ? 1 : 0.5,
-                                  textDecoration: isTrained ? 'none' : 'line-through'
-                                }}
-                              />
-                            );
-                          })}
-                        </Box>
-                        <Box display="flex" alignItems="center" gap={1} mt={0.5}>
-                          <Chip
-                            label={`${status.models_trained.length}/10`}
-                            color={status.models_trained.length === 10 ? 'success' : status.models_trained.length >= 5 ? 'warning' : 'error'}
-                            size="small"
-                            variant="filled"
-                          />
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={(status.models_trained.length / 10) * 100}
-                            sx={{ 
-                              width: 60, 
-                              height: 6,
-                              borderRadius: 3
-                            }}
-                            color={status.models_trained.length === 10 ? 'success' : 'primary'}
-                          />
-                          <Typography variant="caption" color="textSecondary">
-                            {((status.models_trained.length / 10) * 100).toFixed(0)}%
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      
-                      <TableCell>
-                        {status.last_trained 
-                          ? new Date(status.last_trained).toLocaleString()
-                          : 'Not trained'
-                        }
-                      </TableCell>
-                      
-                      <TableCell>
-                        {avgConfidence > 0 ? (
-                          <Chip
-                            label={`${avgConfidence.toFixed(1)}%`}
-                            color={avgConfidence >= 70 ? 'success' : avgConfidence >= 50 ? 'warning' : 'error'}
-                            size="small"
-                          />
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      
-                      <TableCell>
-                        <Box display="flex" gap={0.5} flexWrap="wrap">
-                          {Object.entries(status.current_predictions).map(([model, prediction]) => (
-                            <Chip
-                              key={model}
-                              label={`${model}: ${prediction}`}
-                              color={prediction === 'buy' ? 'success' : prediction === 'sell' ? 'error' : 'default'}
-                              size="small"
-                              variant="outlined"
-                            />
-                          ))}
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        ) : (
-          <Alert severity="info">
-            ML training data will appear here as models complete training.
-          </Alert>
+        {/* Connection Status */}
+        {coinsError && (
+          <div className="relative mb-6">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 to-pink-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-red-500/30 rounded-2xl p-6">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">❌</span>
+                <div>
+                  <p className="text-red-400 font-bold">Backend connection failed. Check if backend is running.</p>
+                  <p className="text-gray-400 text-sm">Backend URL: {process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
-      </Paper>
-    </Box>
+
+        {/* Detailed Training Status */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-500/10 to-gray-500/10 rounded-2xl blur-xl" />
+          <div className="relative bg-black/50 backdrop-blur-xl border border-gray-500/30 rounded-2xl p-6">
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Detailed Training Status (All {mlStatus.length} Coins)
+            </h2>
+            
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
+                <p className="text-gray-400 mt-4">Loading ML training status...</p>
+              </div>
+            ) : coinsError ? (
+              <div className="text-center py-8">
+                <p className="text-red-400">Failed to load training status. Backend may be disconnected.</p>
+              </div>
+            ) : mlStatus.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-white">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left p-4 text-cyan-400 font-bold">Coin</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Status</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Models Trained</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Last Trained</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Avg Confidence</th>
+                      <th className="text-left p-4 text-cyan-400 font-bold">Current Predictions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mlStatus.map((status) => {
+                      const avgConfidence = Object.values(status.confidence_scores).length > 0
+                        ? Object.values(status.confidence_scores).reduce((a, b) => a + b, 0) / Object.values(status.confidence_scores).length
+                        : 0;
+
+                      const getStatusStyle = (status: string) => {
+                        switch (status) {
+                          case 'complete': return 'bg-green-500/20 border-green-500/50 text-green-400';
+                          case 'training': return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400';
+                          case 'pending': return 'bg-gray-500/20 border-gray-500/50 text-gray-400';
+                          default: return 'bg-gray-500/20 border-gray-500/50 text-gray-400';
+                        }
+                      };
+
+                      return (
+                        <tr key={status.coin_symbol} className="border-b border-gray-800 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-transparent transition-all duration-300">
+                          <td className="p-4">
+                            <span className="font-bold text-white">{status.coin_symbol}</span>
+                          </td>
+                          
+                          <td className="p-4">
+                            <span className={`inline-flex px-3 py-1 rounded-lg border ${getStatusStyle(status.training_status)}`}>
+                              {status.training_status}
+                            </span>
+                          </td>
+                          
+                          <td className="p-4">
+                            <div className="flex gap-1 flex-wrap">
+                              {['lstm', 'random_forest', 'svm', 'neural_network', 'xgboost', 'lightgbm', 'catboost', 'transformer', 'gru', 'cnn_1d'].map((modelType) => {
+                                const isTrained = status.models_trained.includes(modelType);
+                                return (
+                                  <span
+                                    key={modelType}
+                                    className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
+                                      isTrained 
+                                        ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-400' 
+                                        : 'bg-gray-700/20 border border-gray-700/50 text-gray-500'
+                                    }`}
+                                  >
+                                    {modelType.replace('_', ' ').toUpperCase()}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
+                                status.models_trained.length === 10 
+                                  ? 'bg-green-500/20 border border-green-500/50 text-green-400'
+                                  : status.models_trained.length >= 5 
+                                  ? 'bg-yellow-500/20 border border-yellow-500/50 text-yellow-400'
+                                  : 'bg-red-500/20 border border-red-500/50 text-red-400'
+                              }`}>
+                                {status.models_trained.length}/10
+                              </span>
+                              <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    status.models_trained.length === 10 
+                                      ? 'bg-green-400' 
+                                      : 'bg-cyan-400'
+                                  }`}
+                                  style={{ width: `${(status.models_trained.length / 10) * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-gray-500 text-xs">
+                                {((status.models_trained.length / 10) * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                          </td>
+                          
+                          <td className="p-4 text-gray-300">
+                            {status.last_trained 
+                              ? new Date(status.last_trained).toLocaleString()
+                              : 'Not trained'
+                            }
+                          </td>
+                          
+                          <td className="p-4">
+                            {avgConfidence > 0 ? (
+                              <span className={`inline-flex px-3 py-1 rounded-lg border ${
+                                avgConfidence >= 70 
+                                  ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                                  : avgConfidence >= 50 
+                                  ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                                  : 'bg-red-500/20 border-red-500/50 text-red-400'
+                              }`}>
+                                {avgConfidence.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </td>
+                          
+                          <td className="p-4">
+                            <div className="flex gap-1 flex-wrap">
+                              {Object.entries(status.current_predictions).map(([model, prediction]) => (
+                                <span
+                                  key={model}
+                                  className={`inline-flex px-2 py-1 rounded text-xs border ${
+                                    prediction === 'buy' || prediction === 'LONG'
+                                      ? 'bg-green-500/20 border-green-500/50 text-green-400' 
+                                      : prediction === 'sell' || prediction === 'SHORT'
+                                      ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                                      : 'bg-gray-700/20 border-gray-700/50 text-gray-500'
+                                  }`}
+                                >
+                                  {model}: {prediction}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-blue-400">ML training data will appear here as models complete training.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
