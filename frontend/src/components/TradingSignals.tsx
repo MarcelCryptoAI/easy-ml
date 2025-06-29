@@ -65,14 +65,12 @@ export const TradingSignals: React.FC = () => {
       // Process each coin to check for signals
       console.log('🔍 Processing', coins.length, 'coins for signals...');
       
-      // Add BTCUSDT first to test
-      const testCoins = [
-        { symbol: 'BTCUSDT', name: 'BTC/USDT', id: 1 },
-        { symbol: 'ETHUSDT', name: 'ETH/USDT', id: 2 },
-        { symbol: 'ADAUSDT', name: 'ADA/USDT', id: 3 }
+      // Start with BTCUSDT which we know has predictions
+      const priorityCoins = [
+        { symbol: 'BTCUSDT', name: 'BTC/USDT', id: 1 }
       ];
       
-      for (const coin of [...testCoins, ...coins.slice(0, 20)]) { // Process test coins + first 20
+      for (const coin of [...priorityCoins, ...coins.slice(0, 50)]) { // Check BTCUSDT first + 50 others
         try {
           // Get predictions for this coin
           const predResponse = await fetch(
@@ -108,8 +106,8 @@ export const TradingSignals: React.FC = () => {
           
           console.log(`📈 ${coin.symbol}: ${buyVotes} buy, ${sellVotes} sell, avg confidence: ${avgConfidence.toFixed(1)}%`);
           
-          // Check if we have a signal (3+ models agree and 40%+ confidence) - lower threshold for more signals
-          if (modelsAgreed >= 3 && avgConfidence >= 40) {
+          // Check if we have a signal (2+ models agree and 30%+ confidence) - very low threshold for testing
+          if (modelsAgreed >= 2 && avgConfidence >= 30) {
             console.log(`🚨 SIGNAL FOUND for ${coin.symbol}!`);
             const signal: TradingSignal = {
               id: `${coin.symbol}_${Date.now()}`,
@@ -267,8 +265,8 @@ export const TradingSignals: React.FC = () => {
               <div>
                 <h3 className="text-xl font-bold text-blue-400 mb-2">Live Signal Criteria</h3>
                 <div className="text-gray-300 space-y-1">
-                  <p>• <strong>AI Consensus:</strong> Weighted model confidence ≥ 40% + decision margin ≥ 0.2</p>
-                  <p>• <strong>Model Agreement:</strong> At least 3 models must agree on trade direction</p>
+                  <p>• <strong>AI Consensus:</strong> Weighted model confidence ≥ 30% + decision margin ≥ 0.2</p>
+                  <p>• <strong>Model Agreement:</strong> At least 2 models must agree on trade direction</p>
                   <p>• <strong>Risk Management:</strong> Position sizing and stop-loss parameters validated</p>
                   <p>• <strong>Live Status:</strong> 🟢 System continuously monitors and executes qualifying signals</p>
                 </div>
