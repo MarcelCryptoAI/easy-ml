@@ -1,44 +1,4 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Paper,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Button,
-  CircularProgress,
-  Chip,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  Divider,
-  IconButton,
-  Tooltip
-} from '@mui/material';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Speed, 
-  PlayArrow,
-  Warning 
-} from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradingApi } from '../utils/api';
 import { Coin, MLPrediction, TradingStrategy } from '../types';
@@ -236,428 +196,482 @@ export const CoinAnalysis: React.FC = () => {
   const holdSignals = predictions?.filter(p => p.prediction === 'hold').length || 0;
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Coin Analysis
-      </Typography>
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-black to-purple-900/20" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
+      </div>
 
-      <Grid container spacing={3}>
+      <div className="relative z-10 p-8">
+        {/* Header */}
+        <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-500 to-pink-500 mb-8">
+          🔍 Coin Analysis Hub
+        </h1>
+
         {/* Coin Selection */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel>Select Coin</InputLabel>
-              <Select
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl blur-xl" />
+          <div className="relative bg-black/50 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-6">
+            <div className="mb-6">
+              <label className="block text-gray-300 text-sm mb-2">Select Coin for Analysis</label>
+              <select
                 value={selectedCoin}
                 onChange={(e) => setSelectedCoin(e.target.value)}
-                label="Select Coin"
+                className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
               >
+                <option value="">Choose a coin...</option>
                 {coins.map((coin: Coin) => (
-                  <MenuItem key={coin.id} value={coin.symbol}>
+                  <option key={coin.id} value={coin.symbol}>
                     {coin.symbol} - {coin.name}
-                  </MenuItem>
+                  </option>
                 ))}
-              </Select>
-            </FormControl>
+              </select>
+            </div>
             
             {/* Action Buttons */}
             {selectedCoin && (
-              <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Button
-                  variant="contained"
-                  color="secondary"
+              <div className="flex flex-wrap gap-3">
+                <button
                   onClick={handlePriorityTraining}
                   disabled={priorityTrainingMutation.isPending || priorityTraining}
-                  startIcon={<Speed />}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl border border-purple-500/50 rounded-xl text-purple-400 hover:bg-purple-500/30 transition-all duration-300 disabled:opacity-50"
                 >
-                  {priorityTraining ? 'Training in Progress...' : 'Priority Train All 10 Models'}
-                </Button>
+                  <div className="flex items-center gap-2">
+                    <span>⚡</span>
+                    <span>{priorityTraining ? 'Training in Progress...' : 'Priority Train All 10 Models'}</span>
+                  </div>
+                </button>
                 
-                <Button
-                  variant="contained"
-                  color="success"
+                <button
                   onClick={() => handleOpenTradeDialog('buy')}
-                  startIcon={<TrendingUp />}
+                  className="px-6 py-3 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-xl border border-green-500/50 rounded-xl text-green-400 hover:bg-green-500/30 transition-all duration-300 hover:scale-105"
                 >
-                  Manual LONG
-                </Button>
+                  <div className="flex items-center gap-2">
+                    <span>📈</span>
+                    <span>Manual LONG</span>
+                  </div>
+                </button>
                 
-                <Button
-                  variant="contained"
-                  color="error"
+                <button
                   onClick={() => handleOpenTradeDialog('sell')}
-                  startIcon={<TrendingDown />}
+                  className="px-6 py-3 bg-gradient-to-r from-red-500/20 to-pink-500/20 backdrop-blur-xl border border-red-500/50 rounded-xl text-red-400 hover:bg-red-500/30 transition-all duration-300 hover:scale-105"
                 >
-                  Manual SHORT
-                </Button>
-              </Box>
+                  <div className="flex items-center gap-2">
+                    <span>📉</span>
+                    <span>Manual SHORT</span>
+                  </div>
+                </button>
+              </div>
             )}
-          </Paper>
-        </Grid>
+          </div>
+        </div>
 
         {selectedCoin && (
-          <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* ML Predictions Summary */}
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 2 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h6">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-2xl blur-xl" />
+              <div className="relative bg-black/50 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-2xl font-bold text-blue-400">
                     ML Predictions for {selectedCoin}
-                  </Typography>
-                  {predictionsLoading && <CircularProgress size={20} />}
-                </Box>
+                  </h3>
+                  {predictionsLoading && (
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
+                  )}
+                </div>
 
-                <Grid container spacing={2} mb={2}>
-                  <Grid item xs={4}>
-                    <Card>
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography color="textSecondary">Buy Signals</Typography>
-                        <Typography variant="h4" color="success.main">
-                          {buySignals}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Card>
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography color="textSecondary">Hold Signals</Typography>
-                        <Typography variant="h4">
-                          {holdSignals}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Card>
-                      <CardContent sx={{ textAlign: 'center' }}>
-                        <Typography color="textSecondary">Sell Signals</Typography>
-                        <Typography variant="h4" color="error.main">
-                          {sellSignals}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                </Grid>
+                {/* Signal Count Cards */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="text-center">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl blur-lg" />
+                      <div className="relative bg-black/50 backdrop-blur-xl border border-green-500/30 rounded-xl p-4">
+                        <p className="text-gray-400 text-sm mb-1">Buy Signals</p>
+                        <p className="text-3xl font-bold text-green-400">{buySignals}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-gray-500/20 to-gray-500/20 rounded-xl blur-lg" />
+                      <div className="relative bg-black/50 backdrop-blur-xl border border-gray-500/30 rounded-xl p-4">
+                        <p className="text-gray-400 text-sm mb-1">Hold Signals</p>
+                        <p className="text-3xl font-bold text-white">{holdSignals}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 to-pink-500/20 rounded-xl blur-lg" />
+                      <div className="relative bg-black/50 backdrop-blur-xl border border-red-500/30 rounded-xl p-4">
+                        <p className="text-gray-400 text-sm mb-1">Sell Signals</p>
+                        <p className="text-3xl font-bold text-red-400">{sellSignals}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                <Card sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Typography color="textSecondary">Average Confidence</Typography>
-                    <Typography variant="h5">
-                      {averageConfidence !== null ? (
-                        <Chip 
-                          label={`${averageConfidence.toFixed(1)}%`}
-                          color={getConfidenceColor(averageConfidence)}
-                        />
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          Waiting for ML predictions...
-                        </Typography>
-                      )}
-                    </Typography>
-                  </CardContent>
-                </Card>
+                {/* Average Confidence */}
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl blur-lg" />
+                  <div className="relative bg-black/50 backdrop-blur-xl border border-yellow-500/30 rounded-xl p-4">
+                    <p className="text-gray-400 text-sm mb-2">Average Confidence</p>
+                    {averageConfidence !== null ? (
+                      <div className={`inline-flex items-center px-3 py-1 rounded-lg ${
+                        averageConfidence >= 80 ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50' :
+                        averageConfidence >= 60 ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/50' :
+                        'bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/50'
+                      }`}>
+                        <span className={`font-bold text-lg ${
+                          averageConfidence >= 80 ? 'text-green-400' :
+                          averageConfidence >= 60 ? 'text-yellow-400' :
+                          'text-red-400'
+                        }`}>
+                          {averageConfidence.toFixed(1)}%
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-gray-400">Waiting for ML predictions...</p>
+                    )}
+                  </div>
+                </div>
 
-                {/* Individual Predictions - ALLEEN echte ML data */}
+                {/* Individual Predictions Table */}
                 {predictions?.length > 0 ? (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Model</TableCell>
-                          <TableCell>Prediction</TableCell>
-                          <TableCell>Confidence</TableCell>
-                          <TableCell>Time</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-white">
+                      <thead>
+                        <tr className="border-b border-gray-700">
+                          <th className="text-left p-3 text-cyan-400 font-bold">Model</th>
+                          <th className="text-left p-3 text-cyan-400 font-bold">Prediction</th>
+                          <th className="text-left p-3 text-cyan-400 font-bold">Confidence</th>
+                          <th className="text-left p-3 text-cyan-400 font-bold">Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
                         {predictions.map((prediction: MLPrediction) => (
-                          <TableRow key={prediction.model_type}>
-                            <TableCell>{prediction.model_type}</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={prediction.prediction}
-                                color={getSignalColor(prediction.prediction)}
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={`${prediction.confidence.toFixed(1)}%`}
-                                color={getConfidenceColor(prediction.confidence)}
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>
+                          <tr key={prediction.model_type} className="border-b border-gray-800 hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-transparent transition-all duration-300">
+                            <td className="p-3 font-semibold">{prediction.model_type}</td>
+                            <td className="p-3">
+                              <div className={`inline-flex items-center px-2 py-1 rounded-lg text-sm ${
+                                prediction.prediction === 'buy' ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50 text-green-400' :
+                                prediction.prediction === 'sell' ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/50 text-red-400' :
+                                'bg-gradient-to-r from-gray-500/20 to-gray-500/20 border border-gray-500/50 text-gray-400'
+                              }`}>
+                                {prediction.prediction}
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div className={`inline-flex items-center px-2 py-1 rounded-lg text-sm ${
+                                prediction.confidence >= 80 ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50 text-green-400' :
+                                prediction.confidence >= 60 ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/50 text-yellow-400' :
+                                'bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/50 text-red-400'
+                              }`}>
+                                {prediction.confidence.toFixed(1)}%
+                              </div>
+                            </td>
+                            <td className="p-3 text-gray-400 text-sm">
                               {new Date(prediction.created_at).toLocaleTimeString()}
-                            </TableCell>
-                          </TableRow>
+                            </td>
+                          </tr>
                         ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
-                  <Alert severity="info">
-                    ML models are training. Predictions will appear here once complete.
-                  </Alert>
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <span className="text-3xl">🤖</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-blue-400 mb-2">ML Models Training</h3>
+                    <p className="text-gray-300">Predictions will appear here once training is complete</p>
+                  </div>
                 )}
-              </Paper>
-            </Grid>
+              </div>
+            </div>
 
             {/* Trading Strategy */}
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 2 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Typography variant="h6">
-                    Trading Strategy
-                  </Typography>
-                  <Button
-                    variant="contained"
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-yellow-500/20 rounded-2xl blur-xl" />
+              <div className="relative bg-black/50 backdrop-blur-xl border border-orange-500/30 rounded-2xl p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-2xl font-bold text-orange-400">Trading Strategy</h3>
+                  <button
                     onClick={handleOptimizeStrategy}
                     disabled={optimizing}
-                    color="secondary"
+                    className="px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl border border-purple-500/50 rounded-xl text-purple-400 hover:bg-purple-500/30 transition-all duration-300 disabled:opacity-50"
                   >
-                    {optimizing ? <CircularProgress size={20} /> : 'AI Optimize'}
-                  </Button>
-                </Box>
+                    <div className="flex items-center gap-2">
+                      {optimizing ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400"></div>
+                      ) : (
+                        <span>🤖</span>
+                      )}
+                      <span>AI Optimize</span>
+                    </div>
+                  </button>
+                </div>
 
                 {strategy && (
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                      <Card>
-                        <CardContent>
-                          <Typography color="textSecondary" variant="body2">
-                            Take Profit
-                          </Typography>
-                          <Typography variant="h6">
-                            {strategy.take_profit_percentage}%
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Card>
-                        <CardContent>
-                          <Typography color="textSecondary" variant="body2">
-                            Stop Loss
-                          </Typography>
-                          <Typography variant="h6">
-                            {strategy.stop_loss_percentage}%
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Card>
-                        <CardContent>
-                          <Typography color="textSecondary" variant="body2">
-                            Leverage
-                          </Typography>
-                          <Typography variant="h6">
-                            {strategy.leverage}x
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Card>
-                        <CardContent>
-                          <Typography color="textSecondary" variant="body2">
-                            Confidence Threshold
-                          </Typography>
-                          <Typography variant="h6">
-                            {strategy.confidence_threshold}%
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl blur-lg" />
+                        <div className="relative bg-black/50 backdrop-blur-xl border border-green-500/30 rounded-xl p-4">
+                          <p className="text-gray-400 text-sm mb-1">Take Profit</p>
+                          <p className="text-xl font-bold text-green-400">{strategy.take_profit_percentage}%</p>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-red-500/20 to-pink-500/20 rounded-xl blur-lg" />
+                        <div className="relative bg-black/50 backdrop-blur-xl border border-red-500/30 rounded-xl p-4">
+                          <p className="text-gray-400 text-sm mb-1">Stop Loss</p>
+                          <p className="text-xl font-bold text-red-400">{strategy.stop_loss_percentage}%</p>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl blur-lg" />
+                        <div className="relative bg-black/50 backdrop-blur-xl border border-blue-500/30 rounded-xl p-4">
+                          <p className="text-gray-400 text-sm mb-1">Leverage</p>
+                          <p className="text-xl font-bold text-blue-400">{strategy.leverage}x</p>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl blur-lg" />
+                        <div className="relative bg-black/50 backdrop-blur-xl border border-purple-500/30 rounded-xl p-4">
+                          <p className="text-gray-400 text-sm mb-1">Confidence Threshold</p>
+                          <p className="text-xl font-bold text-purple-400">{strategy.confidence_threshold}%</p>
+                        </div>
+                      </div>
+                    </div>
                     
                     {strategy.updated_by_ai && (
-                      <Grid item xs={12}>
-                        <Card sx={{ bgcolor: 'info.light' }}>
-                          <CardContent>
-                            <Typography variant="subtitle2" gutterBottom>
-                              🤖 AI Optimization Applied
-                            </Typography>
-                            <Typography variant="body2">
-                              {strategy.ai_optimization_reason}
-                            </Typography>
-                          </CardContent>
-                        </Card>
-                      </Grid>
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-xl blur-lg" />
+                        <div className="relative bg-black/50 backdrop-blur-xl border border-cyan-500/30 rounded-xl p-4">
+                          <h4 className="text-lg font-bold text-cyan-400 mb-2">🤖 AI Optimization Applied</h4>
+                          <p className="text-gray-300">{strategy.ai_optimization_reason}</p>
+                        </div>
+                      </div>
                     )}
-                  </Grid>
+                  </div>
                 )}
-              </Paper>
-            </Grid>
-          </>
+              </div>
+            </div>
+          </div>
         )}
-      </Grid>
 
-      {/* Manual Trading Dialog */}
-      <Dialog open={tradeDialogOpen} onClose={() => setTradeDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Manual {tradeData.side === 'buy' ? 'LONG' : 'SHORT'} Order - {selectedCoin}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <Grid container spacing={3}>
-              {/* Current Price & Balance */}
-              <Grid item xs={12}>
-                <Alert severity="info">
-                  <strong>Current Price:</strong> ${currentPrice.toFixed(4)} | 
-                  <strong> Available Balance:</strong> {availableBalance.toFixed(2)} USDT
-                </Alert>
-              </Grid>
-              
-              {/* Amount Percentage */}
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Amount (% of balance)"
-                  type="number"
-                  value={tradeData.amount_percentage}
-                  onChange={(e) => setTradeData(prev => ({ ...prev, amount_percentage: Number(e.target.value) }))}
-                  inputProps={{ min: 1, max: 100, step: 1 }}
-                  fullWidth
-                  helperText={`≈ ${calculateTradeAmounts().tradeAmount.toFixed(2)} USDT`}
-                />
-              </Grid>
+        {/* Manual Trading Dialog */}
+        {tradeDialogOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="relative max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl blur-xl" />
+              <div className="relative bg-black/90 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-6">
+                <h3 className="text-2xl font-bold text-indigo-400 mb-6">
+                  Manual {tradeData.side === 'buy' ? 'LONG' : 'SHORT'} Order - {selectedCoin}
+                </h3>
+                
+                {/* Current Price & Balance */}
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl blur-lg" />
+                  <div className="relative bg-black/50 backdrop-blur-xl border border-blue-500/30 rounded-xl p-4">
+                    <p className="text-blue-400">
+                      <strong>Current Price:</strong> ${currentPrice.toFixed(4)} | 
+                      <strong> Available Balance:</strong> {availableBalance.toFixed(2)} USDT
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Trade Form */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-gray-300 text-sm mb-2">Amount (% of balance)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      step="1"
+                      value={tradeData.amount_percentage}
+                      onChange={(e) => setTradeData(prev => ({ ...prev, amount_percentage: Number(e.target.value) }))}
+                      className="w-full px-3 py-2 bg-black/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">≈ {calculateTradeAmounts().tradeAmount.toFixed(2)} USDT</p>
+                  </div>
 
-              {/* Order Type */}
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Order Type</InputLabel>
-                  <Select
-                    value={tradeData.order_type}
-                    onChange={(e) => setTradeData(prev => ({ ...prev, order_type: e.target.value as 'market' | 'limit' }))}
-                    label="Order Type"
+                  <div>
+                    <label className="block text-gray-300 text-sm mb-2">Order Type</label>
+                    <select
+                      value={tradeData.order_type}
+                      onChange={(e) => setTradeData(prev => ({ ...prev, order_type: e.target.value as 'market' | 'limit' }))}
+                      className="w-full px-3 py-2 bg-black/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="market">Market Order</option>
+                      <option value="limit">Limit Order</option>
+                    </select>
+                  </div>
+
+                  {tradeData.order_type === 'limit' && (
+                    <div>
+                      <label className="block text-gray-300 text-sm mb-2">Limit Price (USDT)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.0001"
+                        value={tradeData.limit_price || currentPrice}
+                        onChange={(e) => setTradeData(prev => ({ ...prev, limit_price: Number(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-black/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-gray-300 text-sm mb-2">Leverage Multiplier</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="125"
+                      step="1"
+                      value={tradeData.leverage}
+                      onChange={(e) => setTradeData(prev => ({ ...prev, leverage: Number(e.target.value) }))}
+                      className="w-full px-3 py-2 bg-black/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-300 text-sm mb-2">Margin Mode</label>
+                    <select
+                      value={tradeData.margin_mode}
+                      onChange={(e) => setTradeData(prev => ({ ...prev, margin_mode: e.target.value as 'cross' | 'isolated' }))}
+                      className="w-full px-3 py-2 bg-black/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="cross">Cross Margin</option>
+                      <option value="isolated">Isolated Margin</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-300 text-sm mb-2">Take Profit (%)</label>
+                    <input
+                      type="number"
+                      min="0.1"
+                      max="50"
+                      step="0.1"
+                      value={tradeData.take_profit_percentage}
+                      onChange={(e) => setTradeData(prev => ({ ...prev, take_profit_percentage: Number(e.target.value) }))}
+                      className="w-full px-3 py-2 bg-black/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">{calculateLeverageDisplay(tradeData.take_profit_percentage, tradeData.leverage, true)}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-300 text-sm mb-2">Stop Loss (%)</label>
+                    <input
+                      type="number"
+                      min="0.1"
+                      max="20"
+                      step="0.1"
+                      value={tradeData.stop_loss_percentage}
+                      onChange={(e) => setTradeData(prev => ({ ...prev, stop_loss_percentage: Number(e.target.value) }))}
+                      className="w-full px-3 py-2 bg-black/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">{calculateLeverageDisplay(tradeData.stop_loss_percentage, tradeData.leverage, false)}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setTradeDialogOpen(false)}
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-gray-500/20 to-gray-500/20 backdrop-blur-xl border border-gray-500/50 rounded-xl text-gray-400 hover:bg-gray-500/30 transition-all duration-300"
                   >
-                    <MenuItem value="market">Market Order</MenuItem>
-                    <MenuItem value="limit">Limit Order</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              {/* Limit Price (if limit order) */}
-              {tradeData.order_type === 'limit' && (
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Limit Price (USDT)"
-                    type="number"
-                    value={tradeData.limit_price || currentPrice}
-                    onChange={(e) => setTradeData(prev => ({ ...prev, limit_price: Number(e.target.value) }))}
-                    inputProps={{ min: 0, step: 0.0001 }}
-                    fullWidth
-                  />
-                </Grid>
-              )}
-
-              {/* Leverage */}
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Leverage Multiplier"
-                  type="number"
-                  value={tradeData.leverage}
-                  onChange={(e) => setTradeData(prev => ({ ...prev, leverage: Number(e.target.value) }))}
-                  inputProps={{ min: 1, max: 125, step: 1 }}
-                  fullWidth
-                />
-              </Grid>
-
-              {/* Margin Mode */}
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Margin Mode</InputLabel>
-                  <Select
-                    value={tradeData.margin_mode}
-                    onChange={(e) => setTradeData(prev => ({ ...prev, margin_mode: e.target.value as 'cross' | 'isolated' }))}
-                    label="Margin Mode"
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmTrade}
+                    className={`flex-1 px-4 py-2 backdrop-blur-xl border rounded-xl transition-all duration-300 ${
+                      tradeData.side === 'buy' 
+                        ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/50 text-green-400 hover:bg-green-500/30' 
+                        : 'bg-gradient-to-r from-red-500/20 to-pink-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30'
+                    }`}
                   >
-                    <MenuItem value="cross">Cross Margin</MenuItem>
-                    <MenuItem value="isolated">Isolated Margin</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+                    <div className="flex items-center justify-center gap-2">
+                      <span>▶️</span>
+                      <span>Confirm {tradeData.side === 'buy' ? 'LONG' : 'SHORT'}</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-              {/* Take Profit */}
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Take Profit (%)"
-                  type="number"
-                  value={tradeData.take_profit_percentage}
-                  onChange={(e) => setTradeData(prev => ({ ...prev, take_profit_percentage: Number(e.target.value) }))}
-                  inputProps={{ min: 0.1, max: 50, step: 0.1 }}
-                  fullWidth
-                  helperText={calculateLeverageDisplay(tradeData.take_profit_percentage, tradeData.leverage, true)}
-                />
-              </Grid>
+        {/* Confirmation Dialog */}
+        {confirmDialogOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="relative max-w-lg w-full">
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-2xl blur-xl" />
+              <div className="relative bg-black/90 backdrop-blur-xl border border-yellow-500/30 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="text-3xl">⚠️</span>
+                  <h3 className="text-2xl font-bold text-yellow-400">Confirm Manual Trade</h3>
+                </div>
+                
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-xl blur-lg" />
+                  <div className="relative bg-black/50 backdrop-blur-xl border border-orange-500/30 rounded-xl p-4">
+                    <p className="text-orange-400 mb-4">You are about to execute a manual trade. Please review all details carefully.</p>
+                    
+                    <div className="space-y-2 text-gray-300">
+                      <h4 className="text-lg font-bold text-white mb-3">Trade Summary:</h4>
+                      <p>• <strong>Coin:</strong> {selectedCoin}</p>
+                      <p>• <strong>Direction:</strong> {tradeData.side === 'buy' ? 'LONG 📈' : 'SHORT 📉'}</p>
+                      <p>• <strong>Order Type:</strong> {tradeData.order_type.toUpperCase()}</p>
+                      <p>• <strong>Amount:</strong> {calculateTradeAmounts().tradeAmount.toFixed(2)} USDT ({tradeData.amount_percentage}%)</p>
+                      <p>• <strong>Leverage:</strong> {tradeData.leverage}x ({tradeData.margin_mode})</p>
+                      <p>• <strong>Take Profit:</strong> {calculateLeverageDisplay(tradeData.take_profit_percentage, tradeData.leverage, true)}</p>
+                      <p>• <strong>Stop Loss:</strong> {calculateLeverageDisplay(tradeData.stop_loss_percentage, tradeData.leverage, false)}</p>
+                      {tradeData.order_type === 'limit' && (
+                        <p>• <strong>Limit Price:</strong> ${tradeData.limit_price?.toFixed(4)}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-              {/* Stop Loss */}
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Stop Loss (%)"
-                  type="number"
-                  value={tradeData.stop_loss_percentage}
-                  onChange={(e) => setTradeData(prev => ({ ...prev, stop_loss_percentage: Number(e.target.value) }))}
-                  inputProps={{ min: 0.1, max: 20, step: 0.1 }}
-                  fullWidth
-                  helperText={calculateLeverageDisplay(tradeData.stop_loss_percentage, tradeData.leverage, false)}
-                />
-              </Grid>
-            </Grid>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setTradeDialogOpen(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            color={tradeData.side === 'buy' ? 'success' : 'error'}
-            onClick={handleConfirmTrade}
-            startIcon={<PlayArrow />}
-          >
-            Confirm {tradeData.side === 'buy' ? 'LONG' : 'SHORT'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Confirmation Dialog */}
-      <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Warning color="warning" />
-          Confirm Manual Trade
-        </DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            You are about to execute a manual trade. Please review all details carefully.
-          </Alert>
-          
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="h6" gutterBottom>Trade Summary:</Typography>
-            <Typography>• <strong>Coin:</strong> {selectedCoin}</Typography>
-            <Typography>• <strong>Direction:</strong> {tradeData.side === 'buy' ? 'LONG 📈' : 'SHORT 📉'}</Typography>
-            <Typography>• <strong>Order Type:</strong> {tradeData.order_type.toUpperCase()}</Typography>
-            <Typography>• <strong>Amount:</strong> {calculateTradeAmounts().tradeAmount.toFixed(2)} USDT ({tradeData.amount_percentage}%)</Typography>
-            <Typography>• <strong>Leverage:</strong> {tradeData.leverage}x ({tradeData.margin_mode})</Typography>
-            <Typography>• <strong>Take Profit:</strong> {calculateLeverageDisplay(tradeData.take_profit_percentage, tradeData.leverage, true)}</Typography>
-            <Typography>• <strong>Stop Loss:</strong> {calculateLeverageDisplay(tradeData.stop_loss_percentage, tradeData.leverage, false)}</Typography>
-            {tradeData.order_type === 'limit' && (
-              <Typography>• <strong>Limit Price:</strong> ${tradeData.limit_price?.toFixed(4)}</Typography>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDialogOpen(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            color={tradeData.side === 'buy' ? 'success' : 'error'}
-            onClick={handleExecuteTrade}
-            disabled={manualTradeMutation.isPending}
-            startIcon={manualTradeMutation.isPending ? <CircularProgress size={20} /> : <PlayArrow />}
-          >
-            {manualTradeMutation.isPending ? 'Executing...' : `Execute ${tradeData.side.toUpperCase()}`}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmDialogOpen(false)}
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-gray-500/20 to-gray-500/20 backdrop-blur-xl border border-gray-500/50 rounded-xl text-gray-400 hover:bg-gray-500/30 transition-all duration-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleExecuteTrade}
+                    disabled={manualTradeMutation.isPending}
+                    className={`flex-1 px-4 py-2 backdrop-blur-xl border rounded-xl transition-all duration-300 disabled:opacity-50 ${
+                      tradeData.side === 'buy' 
+                        ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/50 text-green-400 hover:bg-green-500/30' 
+                        : 'bg-gradient-to-r from-red-500/20 to-pink-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      {manualTradeMutation.isPending ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                      ) : (
+                        <span>▶️</span>
+                      )}
+                      <span>
+                        {manualTradeMutation.isPending ? 'Executing...' : `Execute ${tradeData.side.toUpperCase()}`}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
