@@ -1,23 +1,4 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Paper,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  TextField,
-  InputAdornment,
-  Alert,
-  LinearProgress,
-  IconButton,
-  Tooltip
-} from '@mui/material';
-import { Search, TrendingUp, TrendingDown, Remove, Refresh } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 
 interface TradingSignal {
@@ -63,8 +44,8 @@ export const TradingSignals: React.FC = () => {
       console.log('🔍 Fetching LIVE signals from backend...');
       
       try {
-        // Use the new /signals/live endpoint for execution status
-        const response = await fetch('https://easy-ml-production.up.railway.app/signals/live');
+        // Use the original /signals endpoint that had 50 signals
+        const response = await fetch('https://easy-ml-production.up.railway.app/signals');
         
         if (!response.ok) {
           throw new Error(`Failed to fetch live signals: ${response.status}`);
@@ -144,10 +125,10 @@ export const TradingSignals: React.FC = () => {
 
   const getSignalIcon = (type: string) => {
     switch (type) {
-      case 'LONG': return <TrendingUp className="text-green-400" />;
-      case 'SHORT': return <TrendingDown className="text-red-400" />;
-      case 'HOLD': return <Remove className="text-gray-400" />;
-      default: return <Remove />;
+      case 'LONG': return <span className="text-green-400 text-xl">📈</span>;
+      case 'SHORT': return <span className="text-red-400 text-xl">📉</span>;
+      case 'HOLD': return <span className="text-gray-400 text-xl">⏸️</span>;
+      default: return <span className="text-gray-400 text-xl">⏸️</span>;
     }
   };
 
@@ -205,7 +186,7 @@ export const TradingSignals: React.FC = () => {
             onClick={() => refetch()}
             className="px-6 py-3 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 backdrop-blur-xl border border-cyan-500/50 rounded-xl text-cyan-400 hover:bg-cyan-500/30 transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(0,255,255,0.5)]"
           >
-            <Refresh className="animate-spin-slow" />
+            <span className="text-xl">🔄</span>
           </button>
         </div>
 
@@ -271,7 +252,7 @@ export const TradingSignals: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-80 px-4 py-3 bg-black/50 backdrop-blur-xl border border-purple-500/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500/60"
               />
-              <Search className="absolute right-3 top-3 text-gray-400" />
+              <span className="absolute right-3 top-3 text-gray-400">🔍</span>
             </div>
           </div>
           
