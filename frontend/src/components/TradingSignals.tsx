@@ -63,39 +63,51 @@ export const TradingSignals: React.FC = () => {
       console.log('🔍 Fetching LIVE signals from backend...');
       
       try {
-        const response = await fetch('https://easy-ml-production.up.railway.app/signals');
+        // Use the new /signals/live endpoint for execution status
+        const response = await fetch('https://easy-ml-production.up.railway.app/signals/live');
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch signals: ${response.status}`);
+          throw new Error(`Failed to fetch live signals: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('✅ Live signals received:', data);
+        console.log('✅ Live signals with execution status received:', data);
         
         // Transform backend signals to match our interface
         if (data.signals && Array.isArray(data.signals)) {
-          const transformedSignals = data.signals.map((signal: any, index: number) => ({
-            id: `${signal.coin_symbol}_${Date.now()}_${index}`,
-            coin_symbol: signal.coin_symbol,
-            signal_type: signal.signal_type,
-            timestamp: signal.created_at || new Date().toISOString(),
-            models_agreed: signal.consensus?.buy_count > signal.consensus?.sell_count 
-              ? signal.consensus.buy_count 
-              : signal.consensus.sell_count,
-            total_models: signal.consensus?.total_models || 10,
-            avg_confidence: signal.confidence || 0,
-            entry_price: signal.entry_price || 0,
-            current_price: signal.current_price || signal.entry_price || 0,
-            position_size_usdt: 1000, // Default position size
-            status: 'open',
-            unrealized_pnl_usdt: 0,
-            unrealized_pnl_percent: 0,
-            criteria_met: {
-              confidence_threshold: signal.confidence >= 30,
-              model_agreement: true,
-              risk_management: true
-            }
-          }));
+          const transformedSignals = data.signals.map((signal: any, index: number) => {
+            // Map backend execution status to frontend status
+            const statusMap: { [key: string]: 'open' | 'closed' | 'cancelled' } = {
+              'pending': 'open',
+              'executing': 'open', 
+              'executed': 'open',
+              'failed': 'cancelled',
+              'closed': 'closed'
+            };
+            
+            return {
+              id: signal.id || `${signal.coin_symbol}_${Date.now()}_${index}`,
+              coin_symbol: signal.coin_symbol,
+              signal_type: signal.signal_type,
+              timestamp: signal.created_at || new Date().toISOString(),
+              models_agreed: signal.consensus?.buy_count > signal.consensus?.sell_count 
+                ? signal.consensus.buy_count 
+                : signal.consensus.sell_count,
+              total_models: signal.consensus?.total_models || 10,
+              avg_confidence: signal.confidence || 0,
+              entry_price: signal.entry_price || 0,
+              current_price: signal.current_price || signal.entry_price || 0,
+              position_size_usdt: signal.position_size_usdt || 1000,
+              status: statusMap[signal.execution_status] || 'open',
+              unrealized_pnl_usdt: signal.unrealized_pnl_usdt || 0,
+              unrealized_pnl_percent: signal.unrealized_pnl_percent || 0,
+              criteria_met: {
+                confidence_threshold: signal.confidence >= 30,
+                model_agreement: (signal.consensus?.buy_count || 0) >= 2 || (signal.consensus?.sell_count || 0) >= 2,
+                risk_management: true
+              }
+            };
+          });
           
           return {
             success: true,
@@ -235,12 +247,12 @@ export const TradingSignals: React.FC = () => {
                 <span className="text-2xl">📋</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-blue-400 mb-2">Live Signal Criteria</h3>
+                <h3 className="text-xl font-bold text-blue-400 mb-2">Automatic Trading System</h3>
                 <div className="text-gray-300 space-y-1">
-                  <p>• <strong>AI Consensus:</strong> Minimum 2 models agree OR 30%+ confidence with 1 model</p>
-                  <p>• <strong>Signal Generation:</strong> Real-time analysis of all 419 coins</p>
-                  <p>• <strong>Update Frequency:</strong> Signals refresh every 10 seconds</p>
-                  <p>• <strong>Status:</strong> 🟢 LIVE MODE - Showing real ML predictions</p>
+                  <p>• <strong>Auto Execution:</strong> Signals automatically executed as real trades on ByBit</p>
+                  <p>• <strong>Criteria:</strong> 25%+ confidence, 2+ models agree, risk limits enforced</p>
+                  <p>• <strong>Safety:</strong> Max $500/trade, $200 daily loss limit, real-time P&L tracking</p>
+                  <p>• <strong>Status:</strong> 🚀 LIVE TRADING - Converting your 50+ signals to real positions</p>
                 </div>
               </div>
             </div>
