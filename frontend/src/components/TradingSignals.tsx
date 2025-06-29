@@ -45,15 +45,92 @@ export const TradingSignals: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
 
-  const { data: signalsResponse, isLoading, refetch } = useQuery({
-    queryKey: ['trading-signals'],
+  // First fetch all coins and their predictions
+  const { data: coins = [] } = useQuery({
+    queryKey: ['coins'],
     queryFn: async () => {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/signals`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch signals: ${response.status} ${response.statusText}`);
-      }
-      return await response.json();
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/coins`);
+      if (!response.ok) throw new Error('Failed to fetch coins');
+      return response.json();
     },
+    refetchInterval: 60000
+  });
+
+  // Generate signals from predictions
+  const { data: signalsResponse, isLoading, refetch } = useQuery({
+    queryKey: ['trading-signals', coins],
+    queryFn: async () => {
+      const signals: TradingSignal[] = [];
+      
+      // Process each coin to check for signals
+      for (const coin of coins.slice(0, 50)) { // Process first 50 coins to avoid timeout
+        try {
+          // Get predictions for this coin
+          const predResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/predictions/${coin.symbol}`
+          );
+          
+          if (!predResponse.ok) continue;
+          
+          const predictions = await predResponse.json();
+          
+          if (predictions.length < 5) continue; // Need at least 5 models
+          
+          // Count buy/sell votes
+          let buyVotes = 0;
+          let sellVotes = 0;
+          let totalConfidence = 0;
+          
+          predictions.forEach((pred: any) => {
+            if (pred.prediction === 'buy' || pred.prediction === 'LONG') {
+              buyVotes++;
+            } else if (pred.prediction === 'sell' || pred.prediction === 'SHORT') {
+              sellVotes++;
+            }
+            totalConfidence += pred.confidence;
+          });
+          
+          const avgConfidence = totalConfidence / predictions.length;
+          const modelsAgreed = Math.max(buyVotes, sellVotes);
+          
+          // Check if we have a signal (5+ models agree and 50%+ confidence)
+          if (modelsAgreed >= 5 && avgConfidence >= 50) {
+            const signal: TradingSignal = {
+              id: `${coin.symbol}_${Date.now()}`,
+              coin_symbol: coin.symbol,
+              signal_type: buyVotes > sellVotes ? 'LONG' : 'SHORT',
+              timestamp: new Date().toISOString(),
+              models_agreed: modelsAgreed,
+              total_models: predictions.length,
+              avg_confidence: avgConfidence,
+              entry_price: 0,
+              current_price: 0,
+              position_size_usdt: 100, // Default position size
+              status: 'open',
+              unrealized_pnl_usdt: 0,
+              unrealized_pnl_percent: 0,
+              criteria_met: {
+                confidence_threshold: avgConfidence >= 50,
+                model_agreement: modelsAgreed >= 5,
+                risk_management: true
+              }
+            };
+            
+            signals.push(signal);
+          }
+        } catch (error) {
+          console.error(`Error processing ${coin.symbol}:`, error);
+        }
+      }
+      
+      return {
+        success: true,
+        signals: signals,
+        total_signals: signals.length,
+        timestamp: new Date().toISOString()
+      };
+    },
+    enabled: coins.length > 0,
     refetchInterval: 30000 // Refresh every 30 seconds
   });
 
