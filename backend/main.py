@@ -178,22 +178,41 @@ async def ml_training_task_10_models():
                         training_progress = int((step + 1) / 10 * 100)
                         await asyncio.sleep(training_time / 10)
                     
-                    # Simple prediction logic (will be replaced with real ML)
+                    # Enhanced prediction logic with more varied signals
                     try:
                         recent_prices = [float(d['close']) for d in historical_data[-20:]]
                         price_change = (recent_prices[-1] - recent_prices[0]) / recent_prices[0] * 100
                         
-                        if price_change > 2.0:
+                        # Add some variation based on model type for diversity
+                        model_bias = {
+                            "lstm": 0.5,        # Slightly bullish
+                            "transformer": 0.3, # Slightly bullish
+                            "xgboost": -0.2,   # Slightly bearish
+                            "lightgbm": -0.1,   # Slightly bearish
+                            "random_forest": 0.0, # Neutral
+                            "svm": 0.1,
+                            "neural_network": 0.2,
+                            "catboost": -0.3,
+                            "gru": 0.4,
+                            "cnn_1d": -0.1
+                        }
+                        
+                        # Adjust price change based on model bias
+                        adjusted_change = price_change + model_bias.get(model_type, 0.0)
+                        
+                        # Lower thresholds for more signal variety
+                        if adjusted_change > 1.0:  # Lowered from 2.0
                             prediction = "buy"
-                            confidence = min(95, 70 + abs(price_change) * 2)
-                        elif price_change < -2.0:
+                            confidence = min(85, 60 + abs(adjusted_change) * 3)
+                        elif adjusted_change < -1.0:  # Lowered from -2.0
                             prediction = "sell" 
-                            confidence = min(95, 70 + abs(price_change) * 2)
+                            confidence = min(85, 60 + abs(adjusted_change) * 3)
                         else:
                             prediction = "hold"
-                            confidence = 60 + abs(price_change)
+                            confidence = 50 + abs(adjusted_change) * 2
                         
-                        confidence = max(60, min(95, confidence))
+                        # Ensure reasonable confidence range
+                        confidence = max(40, min(85, confidence))
                         
                     except Exception as e:
                         logger.error(f"Error in ML prediction for {current_coin.symbol}: {e}")
@@ -885,45 +904,115 @@ async def bulk_update_strategies(strategy_data: Dict, db: Session = Depends(get_
 
 @app.get("/signals")
 async def get_trading_signals(db: Session = Depends(get_db)):
-    """Get autonomous trading signals from AI advisor and live monitoring"""
+    """Get autonomous trading signals from ML predictions with low thresholds"""
     try:
-        # Get signals from AI advisor
-        ai_signals = ai_advisor.get_autonomous_trading_signals(db)
+        # Get all active coins
+        active_coins = db.query(Coin).filter(Coin.is_active == True).all()
+        signals = []
         
-        # Convert to the format expected by frontend
-        formatted_signals = []
-        for signal in ai_signals:
-            formatted_signals.append({
-                "id": f"{signal['coin_symbol']}_{int(datetime.utcnow().timestamp())}",
-                "coin_symbol": signal['coin_symbol'],
-                "signal_type": signal['signal'],
-                "timestamp": datetime.utcnow().isoformat(),
-                "models_agreed": signal['models_consensus'].get('buy', 0) + signal['models_consensus'].get('sell', 0),
-                "total_models": 10,  # We have 10 model types
-                "avg_confidence": signal['avg_model_confidence'],
-                "entry_price": 0.0,  # Will be filled when trade is executed
-                "current_price": 0.0,  # Will be filled when trade is executed  
-                "position_size_usdt": 0.0,  # Will be calculated based on strategy
-                "status": "pending",  # pending, open, closed
-                "unrealized_pnl_usdt": 0.0,
-                "unrealized_pnl_percent": 0.0,
-                "criteria_met": {
-                    "confidence_threshold": signal['confidence'] >= 50.0,
-                    "model_agreement": signal['models_consensus'].get('buy', 0) >= 5 or signal['models_consensus'].get('sell', 0) >= 5,
-                    "risk_management": True
-                }
-            })
+        for coin in active_coins:
+            try:
+                # Get latest predictions for this coin
+                predictions = db.query(MLPrediction).filter(
+                    MLPrediction.coin_symbol == coin.symbol,
+                    MLPrediction.created_at >= datetime.utcnow() - timedelta(hours=2)  # Recent predictions
+                ).order_by(MLPrediction.created_at.desc()).limit(10).all()
+                
+                if len(predictions) < 2:  # Need at least 2 model predictions
+                    continue
+                
+                # Group by latest prediction per model type
+                latest_by_model = {}
+                for pred in predictions:
+                    if pred.model_type not in latest_by_model:
+                        latest_by_model[pred.model_type] = pred
+                
+                # Count consensus with low thresholds
+                buy_count = 0
+                sell_count = 0
+                hold_count = 0
+                total_confidence = 0
+                
+                for model_type, pred in latest_by_model.items():
+                    total_confidence += pred.confidence
+                    
+                    if pred.prediction.upper() in ["BUY", "LONG"]:
+                        buy_count += 1
+                    elif pred.prediction.upper() in ["SELL", "SHORT"]:
+                        sell_count += 1
+                    else:
+                        hold_count += 1
+                
+                models_count = len(latest_by_model)
+                avg_confidence = total_confidence / models_count if models_count > 0 else 0
+                
+                # Very low thresholds: 2+ models agree OR 30%+ average confidence
+                signal_generated = False
+                signal_type = "HOLD"
+                confidence = avg_confidence
+                
+                if buy_count >= 2 or (buy_count >= 1 and avg_confidence >= 30):
+                    signal_type = "LONG"
+                    signal_generated = True
+                    confidence = (buy_count / models_count) * avg_confidence
+                elif sell_count >= 2 or (sell_count >= 1 and avg_confidence >= 30):
+                    signal_type = "SHORT"
+                    signal_generated = True
+                    confidence = (sell_count / models_count) * avg_confidence
+                
+                if signal_generated:
+                    # Try to get current price
+                    current_price = 0.0
+                    try:
+                        klines = bybit_client.get_klines(coin.symbol, interval="1", limit=1)
+                        if klines:
+                            current_price = float(klines[-1]["close"])
+                    except:
+                        pass
+                    
+                    signals.append({
+                        "id": f"{coin.symbol}_{int(datetime.utcnow().timestamp())}",
+                        "coin_symbol": coin.symbol,
+                        "signal_type": signal_type,
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "models_agreed": buy_count if signal_type == "LONG" else sell_count,
+                        "total_models": models_count,
+                        "avg_confidence": round(avg_confidence, 1),
+                        "entry_price": current_price,
+                        "current_price": current_price,
+                        "position_size_usdt": 100.0,  # Default position size
+                        "status": "pending",
+                        "unrealized_pnl_usdt": 0.0,
+                        "unrealized_pnl_percent": 0.0,
+                        "criteria_met": {
+                            "confidence_threshold": avg_confidence >= 30.0,
+                            "model_agreement": buy_count >= 2 or sell_count >= 2,
+                            "risk_management": True
+                        },
+                        "consensus_breakdown": {
+                            "buy": buy_count,
+                            "sell": sell_count,
+                            "hold": hold_count
+                        }
+                    })
+            
+            except Exception as coin_error:
+                logger.error(f"Error processing signals for {coin.symbol}: {coin_error}")
+                continue
         
-        logger.info(f"📊 Generated {len(formatted_signals)} trading signals")
+        # Sort by confidence
+        signals.sort(key=lambda x: x["avg_confidence"], reverse=True)
+        
+        logger.info(f"📊 Generated {len(signals)} trading signals with low thresholds")
         
         return {
             "success": True,
-            "signals": formatted_signals,
-            "total_signals": len(formatted_signals),
+            "signals": signals[:50],  # Return top 50 signals
+            "total_signals": len(signals),
             "timestamp": datetime.utcnow().isoformat(),
             "criteria": {
-                "min_confidence": 50.0,
-                "min_model_agreement": 5,
+                "min_confidence": 30.0,
+                "min_model_agreement": 2,
                 "risk_management_enabled": True
             }
         }
@@ -1006,7 +1095,7 @@ async def deployment_test():
     return {
         "message": "✅ Clean deployment with all endpoints!", 
         "timestamp": datetime.utcnow().isoformat(), 
-        "version": "v2.1",
+        "version": "v2.2",
         "endpoints": [
             "/training-info", 
             "/trading/status", 
@@ -1015,9 +1104,74 @@ async def deployment_test():
             "/optimize/status",
             "/optimize/queue", 
             "/optimize/apply/{symbol}",
-            "/signals"
+            "/signals",
+            "/debug/signals"
         ]
     }
+
+@app.get("/debug/signals")
+async def debug_signals(db: Session = Depends(get_db)):
+    """Debug endpoint to check signal generation"""
+    try:
+        # Get total active coins
+        active_coins = db.query(Coin).filter(Coin.is_active == True).count()
+        
+        # Get recent predictions count
+        recent_predictions = db.query(MLPrediction).filter(
+            MLPrediction.created_at >= datetime.utcnow() - timedelta(hours=2)
+        ).count()
+        
+        # Get a sample of recent predictions with different signals
+        sample_predictions = db.query(MLPrediction).filter(
+            MLPrediction.created_at >= datetime.utcnow() - timedelta(hours=2)
+        ).order_by(MLPrediction.created_at.desc()).limit(20).all()
+        
+        # Group predictions by coin
+        predictions_by_coin = {}
+        for pred in sample_predictions:
+            if pred.coin_symbol not in predictions_by_coin:
+                predictions_by_coin[pred.coin_symbol] = []
+            predictions_by_coin[pred.coin_symbol].append({
+                "model": pred.model_type,
+                "prediction": pred.prediction,
+                "confidence": pred.confidence
+            })
+        
+        # Try to generate a signal using the same logic
+        test_signals = []
+        for coin_symbol, preds in predictions_by_coin.items():
+            buy_count = sum(1 for p in preds if p["prediction"].upper() in ["BUY", "LONG"])
+            sell_count = sum(1 for p in preds if p["prediction"].upper() in ["SELL", "SHORT"])
+            avg_conf = sum(p["confidence"] for p in preds) / len(preds) if preds else 0
+            
+            if buy_count >= 2 or (buy_count >= 1 and avg_conf >= 30):
+                test_signals.append({
+                    "coin": coin_symbol,
+                    "signal": "LONG",
+                    "buy_models": buy_count,
+                    "avg_confidence": round(avg_conf, 1)
+                })
+            elif sell_count >= 2 or (sell_count >= 1 and avg_conf >= 30):
+                test_signals.append({
+                    "coin": coin_symbol,
+                    "signal": "SHORT",
+                    "sell_models": sell_count,
+                    "avg_confidence": round(avg_conf, 1)
+                })
+        
+        return {
+            "active_coins": active_coins,
+            "recent_predictions_count": recent_predictions,
+            "sample_predictions_by_coin": predictions_by_coin,
+            "test_signals_generated": test_signals,
+            "thresholds": {
+                "min_models_agreement": 2,
+                "min_confidence": 30.0
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error in debug signals: {e}")
+        return {"error": str(e)}
 
 @app.get("/trading/statistics")
 async def get_trading_statistics(db: Session = Depends(get_db)):
@@ -1448,9 +1602,9 @@ async def live_signal_monitoring_task():
                     max_confidence = max(long_confidence, short_confidence)
                     decision_margin = abs(long_confidence - short_confidence)
                     
-                    # Signal criteria: confidence >= 50% AND margin >= 0.2
-                    signal_threshold = 0.50
-                    margin_threshold = 0.2
+                    # Signal criteria: confidence >= 30% AND margin >= 0.1 (LOWER THRESHOLDS)
+                    signal_threshold = 0.30
+                    margin_threshold = 0.1
                     
                     if max_confidence >= signal_threshold and decision_margin >= margin_threshold:
                         signals_generated += 1

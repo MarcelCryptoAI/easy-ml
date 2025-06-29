@@ -81,12 +81,12 @@ class AITradingAdvisor:
             total_models = len(latest_predictions)
             avg_confidence = total_confidence / total_models if total_models > 0 else 0
             
-            # Determine recommendation based on consensus
-            # Lower threshold to 5 models (50%) for more signals
-            if buy_votes >= 5:  # 50% consensus for LONG
+            # Determine recommendation based on consensus with VERY LOW thresholds
+            # Lower threshold to 2 models (20%) for more signals
+            if buy_votes >= 2:  # Only 2 models needed for LONG
                 recommendation = "LONG"
                 confidence = (buy_votes / total_models) * (avg_confidence / 100)
-            elif sell_votes >= 5:  # 50% consensus for SHORT
+            elif sell_votes >= 2:  # Only 2 models needed for SHORT
                 recommendation = "SHORT"
                 confidence = (sell_votes / total_models) * (avg_confidence / 100)
             else:
@@ -264,8 +264,8 @@ class AITradingAdvisor:
             for coin in coins:
                 recommendation = self.get_autonomous_recommendation(db, coin.symbol)
                 
-                # Lower confidence threshold to get more signals
-                if recommendation["confidence"] >= 50.0 and recommendation["recommendation"] != "HOLD":
+                # Much lower confidence threshold to get more signals (30% instead of 50%)
+                if recommendation["confidence"] >= 30.0 and recommendation["recommendation"] != "HOLD":
                     signals.append({
                         "coin_symbol": coin.symbol,
                         "signal": recommendation["recommendation"],

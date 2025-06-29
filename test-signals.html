@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Signals</title>
+</head>
+<body>
+    <h1>Signal Test</h1>
+    <div id="output"></div>
+    
+    <script>
+        async function testSignals() {
+            console.log('🔍 Starting signal test...');
+            
+            try {
+                // Test BTCUSDT predictions directly
+                const response = await fetch('https://easy-ml-production.up.railway.app/predictions/BTCUSDT');
+                const predictions = await response.json();
+                
+                console.log('📊 BTCUSDT predictions:', predictions);
+                
+                // Count buy/sell votes
+                let buyVotes = 0;
+                let sellVotes = 0;
+                let totalConfidence = 0;
+                
+                predictions.forEach(pred => {
+                    if (pred.prediction === 'buy' || pred.prediction === 'LONG') {
+                        buyVotes++;
+                    } else if (pred.prediction === 'sell' || pred.prediction === 'SHORT') {
+                        sellVotes++;
+                    }
+                    totalConfidence += pred.confidence;
+                });
+                
+                const avgConfidence = totalConfidence / predictions.length;
+                const modelsAgreed = Math.max(buyVotes, sellVotes);
+                
+                console.log(`📈 BTCUSDT: ${buyVotes} buy, ${sellVotes} sell, avg confidence: ${avgConfidence.toFixed(1)}%`);
+                
+                // Check signal
+                if (modelsAgreed >= 2 && avgConfidence >= 30) {
+                    console.log('🚨 SIGNAL FOUND for BTCUSDT!');
+                    const signal = {
+                        coin_symbol: 'BTCUSDT',
+                        signal_type: buyVotes > sellVotes ? 'LONG' : 'SHORT',
+                        models_agreed: modelsAgreed,
+                        total_models: predictions.length,
+                        avg_confidence: avgConfidence
+                    };
+                    
+                    document.getElementById('output').innerHTML = `
+                        <h2>🚨 SIGNAL GENERATED!</h2>
+                        <p><strong>Coin:</strong> ${signal.coin_symbol}</p>
+                        <p><strong>Signal:</strong> ${signal.signal_type}</p>
+                        <p><strong>Models Agreed:</strong> ${signal.models_agreed}/${signal.total_models}</p>
+                        <p><strong>Average Confidence:</strong> ${signal.avg_confidence.toFixed(1)}%</p>
+                    `;
+                } else {
+                    document.getElementById('output').innerHTML = `
+                        <h2>❌ NO SIGNAL</h2>
+                        <p>Models agreed: ${modelsAgreed} (need ≥2)</p>
+                        <p>Avg confidence: ${avgConfidence.toFixed(1)}% (need ≥30%)</p>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('output').innerHTML = `<h2>❌ ERROR</h2><p>${error.message}</p>`;
+            }
+        }
+        
+        testSignals();
+    </script>
+</body>
+</html>
