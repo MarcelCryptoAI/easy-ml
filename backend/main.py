@@ -967,7 +967,7 @@ async def get_live_trading_signals(db: Session = Depends(get_db)):
 
 @app.get("/signals")
 async def get_trading_signals(db: Session = Depends(get_db)):
-    """Get autonomous trading signals from ML predictions with low thresholds"""
+    """Get autonomous trading signals from ML predictions with STRICT HIGH-QUALITY criteria"""
     try:
         # Get all active coins
         active_coins = db.query(Coin).filter(Coin.is_active == True).all()
@@ -981,7 +981,11 @@ async def get_trading_signals(db: Session = Depends(get_db)):
                     MLPrediction.created_at >= datetime.utcnow() - timedelta(hours=2)  # Recent predictions
                 ).order_by(MLPrediction.created_at.desc()).limit(10).all()
                 
-                if len(predictions) < 2:  # Need at least 2 model predictions
+                # Use STRICT criteria from signal execution engine
+                config = signal_execution_engine.get_signal_config()
+                min_models = config["minimum_models_required"]
+                
+                if len(predictions) < min_models:
                     continue
                 
                 # Group by latest prediction per model type
@@ -990,38 +994,66 @@ async def get_trading_signals(db: Session = Depends(get_db)):
                     if pred.model_type not in latest_by_model:
                         latest_by_model[pred.model_type] = pred
                 
-                # Count consensus with low thresholds
+                # Skip if not enough unique models
+                if len(latest_by_model) < min_models:
+                    continue
+                
+                # Apply weighted consensus with STRICT thresholds
+                model_weights = {
+                    'transformer': 1.25, 'lstm': 1.20, 'xgboost': 1.15,
+                    'lightgbm': 1.10, 'catboost': 1.05, 'random_forest': 1.00,
+                    'neural_network': 0.95, 'svm': 0.90, 'gru': 1.10, 'cnn_1d': 0.85
+                }
+                
+                long_score = 0
+                short_score = 0
+                total_weight = 0
                 buy_count = 0
                 sell_count = 0
-                hold_count = 0
                 total_confidence = 0
                 
                 for model_type, pred in latest_by_model.items():
+                    weight = model_weights.get(pred.model_type.lower(), 1.0)
+                    total_weight += weight
                     total_confidence += pred.confidence
                     
                     if pred.prediction.upper() in ["BUY", "LONG"]:
+                        long_score += weight * (pred.confidence / 100)
                         buy_count += 1
                     elif pred.prediction.upper() in ["SELL", "SHORT"]:
+                        short_score += weight * (pred.confidence / 100)
                         sell_count += 1
-                    else:
-                        hold_count += 1
                 
-                models_count = len(latest_by_model)
-                avg_confidence = total_confidence / models_count if models_count > 0 else 0
+                if total_weight == 0:
+                    continue
                 
-                # Very low thresholds: 2+ models agree OR 30%+ average confidence
-                signal_generated = False
-                signal_type = "HOLD"
-                confidence = avg_confidence
+                # Normalize scores
+                long_confidence = long_score / total_weight
+                short_confidence = short_score / total_weight
+                avg_confidence = total_confidence / len(latest_by_model)
                 
-                if buy_count >= 2 or (buy_count >= 1 and avg_confidence >= 30):
-                    signal_type = "LONG"
-                    signal_generated = True
-                    confidence = (buy_count / models_count) * avg_confidence
-                elif sell_count >= 2 or (sell_count >= 1 and avg_confidence >= 30):
-                    signal_type = "SHORT"
-                    signal_generated = True
-                    confidence = (sell_count / models_count) * avg_confidence
+                # Determine signal strength
+                max_confidence = max(long_confidence, short_confidence)
+                decision_margin = abs(long_confidence - short_confidence)
+                
+                # Apply STRICT criteria from configuration
+                signal_threshold = config["confidence_threshold"] / 100
+                margin_threshold = config["margin_threshold"]
+                required_agreement = config["model_agreement_threshold"]
+                
+                signal_type = 'LONG' if long_confidence > short_confidence else 'SHORT'
+                models_agreed = buy_count if signal_type == 'LONG' else sell_count
+                agreement_ratio = models_agreed / len(latest_by_model)
+                
+                # Apply STRICT criteria - much higher thresholds
+                signal_generated = (
+                    max_confidence >= signal_threshold and 
+                    decision_margin >= margin_threshold and
+                    agreement_ratio >= required_agreement and
+                    avg_confidence >= config["confidence_threshold"]
+                )
+                
+                confidence = max_confidence * 100
                 
                 if signal_generated:
                     # Try to get current price
@@ -1038,9 +1070,12 @@ async def get_trading_signals(db: Session = Depends(get_db)):
                         "coin_symbol": coin.symbol,
                         "signal_type": signal_type,
                         "timestamp": datetime.utcnow().isoformat(),
-                        "models_agreed": buy_count if signal_type == "LONG" else sell_count,
-                        "total_models": models_count,
+                        "models_agreed": models_agreed,
+                        "total_models": len(latest_by_model),
+                        "confidence": round(confidence, 1),
                         "avg_confidence": round(avg_confidence, 1),
+                        "decision_margin": round(decision_margin, 3),
+                        "agreement_ratio": round(agreement_ratio, 3),
                         "entry_price": current_price,
                         "current_price": current_price,
                         "position_size_usdt": 100.0,  # Default position size
@@ -1048,14 +1083,22 @@ async def get_trading_signals(db: Session = Depends(get_db)):
                         "unrealized_pnl_usdt": 0.0,
                         "unrealized_pnl_percent": 0.0,
                         "criteria_met": {
-                            "confidence_threshold": avg_confidence >= 30.0,
-                            "model_agreement": buy_count >= 2 or sell_count >= 2,
-                            "risk_management": True
+                            "confidence_threshold": max_confidence >= signal_threshold,
+                            "margin_threshold": decision_margin >= margin_threshold,
+                            "model_agreement": agreement_ratio >= required_agreement,
+                            "avg_confidence": avg_confidence >= config["confidence_threshold"],
+                            "all_criteria": signal_generated
+                        },
+                        "thresholds_used": {
+                            "confidence_threshold": config["confidence_threshold"],
+                            "margin_threshold": config["margin_threshold"],
+                            "model_agreement_threshold": config["model_agreement_threshold"] * 100,
+                            "minimum_models_required": config["minimum_models_required"]
                         },
                         "consensus_breakdown": {
                             "buy": buy_count,
                             "sell": sell_count,
-                            "hold": hold_count
+                            "hold": len(latest_by_model) - buy_count - sell_count
                         }
                     })
             
@@ -1063,21 +1106,28 @@ async def get_trading_signals(db: Session = Depends(get_db)):
                 logger.error(f"Error processing signals for {coin.symbol}: {coin_error}")
                 continue
         
-        # Sort by confidence
-        signals.sort(key=lambda x: x["avg_confidence"], reverse=True)
+        # Sort by confidence (highest first)
+        signals.sort(key=lambda x: x["confidence"], reverse=True)
         
-        logger.info(f"📊 Generated {len(signals)} trading signals with low thresholds")
+        # Get current configuration for display
+        config = signal_execution_engine.get_signal_config()
+        
+        logger.info(f"📊 Generated {len(signals)} HIGH-QUALITY trading signals with STRICT criteria")
         
         return {
             "success": True,
-            "signals": signals[:50],  # Return top 50 signals
+            "signals": signals[:20],  # Return top 20 high-quality signals
             "total_signals": len(signals),
             "timestamp": datetime.utcnow().isoformat(),
-            "criteria": {
-                "min_confidence": 30.0,
-                "min_model_agreement": 2,
-                "risk_management_enabled": True
-            }
+            "strict_criteria": {
+                "confidence_threshold": config["confidence_threshold"],
+                "model_agreement_threshold": config["model_agreement_threshold"] * 100,
+                "minimum_models_required": config["minimum_models_required"],
+                "margin_threshold": config["margin_threshold"],
+                "description": "High-quality signals only - much stricter than before"
+            },
+            "signal_generation_enabled": config["enabled"],
+            "note": "These are STRICT HIGH-QUALITY signals. Far fewer signals but much higher probability of success."
         }
     except Exception as e:
         logger.error(f"Error getting trading signals: {e}")
@@ -1156,14 +1206,15 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/deployment-test")
 async def deployment_test():
     return {
-        "message": "✅ Automatic Trading Execution System Deployed!", 
+        "message": "✅ HIGH-QUALITY Signal Trading System Deployed!", 
         "timestamp": datetime.utcnow().isoformat(), 
-        "version": "v3.0",
+        "version": "v4.0",
         "new_features": [
-            "Automatic signal execution",
-            "Real-time P&L tracking", 
-            "Signal management endpoints",
-            "Risk management controls"
+            "STRICT HIGH-QUALITY signal criteria (80%+ confidence, 75% model agreement)",
+            "Real-time signal configuration management",
+            "Comprehensive admin control panel", 
+            "Detailed execution status tracking",
+            "Engine start/stop controls"
         ],
         "endpoints": [
             "/training-info", 
@@ -1175,11 +1226,16 @@ async def deployment_test():
             "/optimize/apply/{symbol}",
             "/signals",
             "/signals/live",
+            "/signals/config",
+            "/signals/execution-status",
+            "/signals/admin/control-panel",
             "/signals/execute/{signal_id}",
             "/signals/cancel/{signal_id}",
             "/signals/statistics",
             "/signals/engine/toggle",
             "/signals/engine/status",
+            "/signals/engine/start",
+            "/signals/engine/stop",
             "/debug/signals"
         ]
     }
@@ -1754,6 +1810,168 @@ async def get_signal_engine_status():
         }
     except Exception as e:
         logger.error(f"Error getting signal engine status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/signals/config")
+async def get_signal_config():
+    """Get current signal generation configuration"""
+    try:
+        config = signal_execution_engine.get_signal_config()
+        return {
+            "success": True,
+            "config": config,
+            "description": {
+                "confidence_threshold": "Minimum confidence percentage required for signal generation (50-95%)",
+                "model_agreement_threshold": "Minimum percentage of models that must agree (0.5-1.0)",
+                "minimum_models_required": "Minimum number of model predictions required (2-10)",
+                "margin_threshold": "Minimum decision margin between buy/sell (0.05-0.5)",
+                "enabled": "Whether signal generation is enabled"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting signal config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/signals/config")
+async def update_signal_config(config_update: Dict):
+    """Update signal generation configuration"""
+    try:
+        result = signal_execution_engine.update_signal_config(config_update)
+        
+        # Log the configuration change
+        logger.info(f"🔧 Signal configuration updated by admin: {result['updated_fields']}")
+        
+        return result
+    except Exception as e:
+        logger.error(f"Error updating signal config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/signals/execution-status")
+async def get_signal_execution_status():
+    """Get detailed signal execution status and statistics"""
+    try:
+        status = signal_execution_engine.get_execution_status()
+        return {
+            "success": True,
+            "execution_status": status,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting execution status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/signals/engine/start")
+async def start_signal_engine():
+    """Start the signal execution engine"""
+    try:
+        result = signal_execution_engine.start_engine()
+        logger.info("🚀 Signal execution engine started by admin request")
+        return result
+    except Exception as e:
+        logger.error(f"Error starting signal engine: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/signals/engine/stop")
+async def stop_signal_engine():
+    """Stop the signal execution engine"""
+    try:
+        result = signal_execution_engine.stop_engine()
+        logger.info("🛑 Signal execution engine stopped by admin request")
+        return result
+    except Exception as e:
+        logger.error(f"Error stopping signal engine: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/signals/admin/control-panel")
+async def get_admin_control_panel(db: Session = Depends(get_db)):
+    """Get comprehensive admin control panel data for signal monitoring and control"""
+    try:
+        # Get execution status
+        execution_status = signal_execution_engine.get_execution_status()
+        
+        # Get signal configuration
+        signal_config = signal_execution_engine.get_signal_config()
+        
+        # Get recent signals
+        recent_signals = db.query(TradingSignal).filter(
+            TradingSignal.created_at >= datetime.utcnow() - timedelta(hours=6)
+        ).order_by(TradingSignal.created_at.desc()).limit(20).all()
+        
+        # Get signal statistics by status
+        signal_stats = {}
+        for status in ['pending', 'executing', 'executed', 'failed', 'expired', 'cancelled']:
+            signal_stats[status] = db.query(TradingSignal).filter(
+                TradingSignal.status == status,
+                TradingSignal.created_at >= datetime.utcnow() - timedelta(hours=24)
+            ).count()
+        
+        # Get model prediction statistics
+        recent_predictions = db.query(MLPrediction).filter(
+            MLPrediction.created_at >= datetime.utcnow() - timedelta(hours=1)
+        ).count()
+        
+        # Get active coins count
+        active_coins = db.query(Coin).filter(Coin.is_active == True).count()
+        
+        # Calculate signal quality metrics
+        total_signals_today = sum(signal_stats.values())
+        high_quality_signals = db.query(TradingSignal).filter(
+            TradingSignal.created_at >= datetime.utcnow() - timedelta(hours=24),
+            TradingSignal.confidence >= signal_config["confidence_threshold"]
+        ).count()
+        
+        quality_percentage = (high_quality_signals / total_signals_today * 100) if total_signals_today > 0 else 0
+        
+        # Format recent signals for display
+        formatted_signals = []
+        for signal in recent_signals:
+            formatted_signals.append({
+                "signal_id": signal.signal_id,
+                "coin_symbol": signal.coin_symbol,
+                "signal_type": signal.signal_type,
+                "confidence": round(signal.confidence, 1),
+                "models_agreed": signal.models_agreed,
+                "total_models": signal.total_models,
+                "agreement_percentage": round((signal.models_agreed / signal.total_models * 100), 1) if signal.total_models > 0 else 0,
+                "status": signal.status,
+                "created_at": signal.created_at.isoformat(),
+                "executed_at": signal.executed_at.isoformat() if signal.executed_at else None,
+                "execution_error": signal.execution_error,
+                "position_size_usdt": signal.position_size_usdt,
+                "unrealized_pnl_usdt": round(signal.unrealized_pnl_usdt, 2) if signal.unrealized_pnl_usdt else 0,
+                "meets_criteria": (
+                    signal.confidence >= signal_config["confidence_threshold"] and
+                    (signal.models_agreed / signal.total_models) >= signal_config["model_agreement_threshold"]
+                )
+            })
+        
+        return {
+            "success": True,
+            "timestamp": datetime.utcnow().isoformat(),
+            "engine_status": {
+                "enabled": signal_execution_engine.enabled,
+                "signal_generation_enabled": signal_config["enabled"],
+                "current_processing_signal": execution_status["current_processing_signal"]
+            },
+            "signal_config": signal_config,
+            "execution_statistics": execution_status,
+            "signal_quality": {
+                "total_signals_24h": total_signals_today,
+                "high_quality_signals_24h": high_quality_signals,
+                "quality_percentage": round(quality_percentage, 1),
+                "criteria": f"≥{signal_config['confidence_threshold']}% confidence, ≥{signal_config['model_agreement_threshold']*100}% agreement"
+            },
+            "signal_breakdown_24h": signal_stats,
+            "system_health": {
+                "active_coins": active_coins,
+                "recent_predictions_1h": recent_predictions,
+                "daily_trades": execution_status["daily_stats"]["trades_count"],
+                "daily_loss": execution_status["daily_stats"]["loss_usdt"]
+            },
+            "recent_signals": formatted_signals
+        }
+    except Exception as e:
+        logger.error(f"Error getting admin control panel data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 async def live_signal_monitoring_task():
