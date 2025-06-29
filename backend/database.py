@@ -104,6 +104,34 @@ class TradingStrategy(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+class TradingSignal(Base):
+    __tablename__ = "trading_signals"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    signal_id = Column(String, unique=True, index=True)  # Unique identifier for the signal
+    coin_symbol = Column(String, index=True, nullable=False)
+    signal_type = Column(String, nullable=False)  # LONG, SHORT
+    confidence = Column(Float, nullable=False)
+    models_agreed = Column(Integer, default=0)
+    total_models = Column(Integer, default=0)
+    entry_price = Column(Float, nullable=False)
+    current_price = Column(Float, nullable=False)
+    position_size_usdt = Column(Float, default=100.0)
+    leverage = Column(Integer, default=10)
+    take_profit_price = Column(Float, nullable=True)
+    stop_loss_price = Column(Float, nullable=True)
+    status = Column(String, default="pending")  # pending, executing, executed, failed, closed
+    trade_id = Column(Integer, nullable=True)  # Foreign key to trades table
+    execution_order_id = Column(String, nullable=True)  # Bybit order ID
+    unrealized_pnl_usdt = Column(Float, default=0.0)
+    unrealized_pnl_percent = Column(Float, default=0.0)
+    realized_pnl_usdt = Column(Float, default=0.0)
+    realized_pnl_percent = Column(Float, default=0.0)
+    execution_error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    executed_at = Column(DateTime, nullable=True)
+    closed_at = Column(DateTime, nullable=True)
+
 def get_db():
     db = SessionLocal()
     try:

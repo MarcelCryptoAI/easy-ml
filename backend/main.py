@@ -9,9 +9,10 @@ import logging
 import os
 from datetime import datetime, timedelta
 
-from database import get_db, create_tables, Coin, MLPrediction, Trade, TradingStrategy, HistoricalData
+from database import get_db, create_tables, Coin, MLPrediction, Trade, TradingStrategy, HistoricalData, TradingSignal
 from bybit_client import BybitClient
 from trading_engine import TradingEngine
+from signal_execution_engine import SignalExecutionEngine
 from websocket_manager import WebSocketManager
 from openai_optimizer import OpenAIOptimizer
 from startup_tasks import initialize_database, validate_configuration, cleanup_disallowed_coins
@@ -35,6 +36,7 @@ app.add_middleware(
 websocket_manager = WebSocketManager()
 bybit_client = BybitClient()
 trading_engine = TradingEngine(bybit_client, websocket_manager)
+signal_execution_engine = SignalExecutionEngine(bybit_client, websocket_manager)
 openai_optimizer = OpenAIOptimizer()
 backtest_engine = BacktestEngine()
 ai_advisor = AITradingAdvisor()
@@ -45,11 +47,11 @@ async def startup_event():
     validate_configuration()
     await initialize_database()
     asyncio.create_task(sync_coins_task())
-    asyncio.create_task(trading_engine.process_trading_signals())
+    asyncio.create_task(trading_engine.process_trading_signals())  # Keep existing trading engine
+    asyncio.create_task(signal_execution_engine.process_signals_continuously())  # NEW: Automatic signal execution
     asyncio.create_task(ml_training_task_10_models())
     asyncio.create_task(historical_data_fetch_task())
-    asyncio.create_task(live_signal_monitoring_task())  # NEW: Live signal monitoring
-    logger.info("Platform started successfully!")
+    logger.info("Platform started successfully with automatic signal execution!")
 
 async def sync_coins_task():
     while True:
@@ -902,6 +904,67 @@ async def bulk_update_strategies(strategy_data: Dict, db: Session = Depends(get_
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/signals/live")
+async def get_live_trading_signals(db: Session = Depends(get_db)):
+    """Get live signals from the database with execution status"""
+    try:
+        # Get all signals from the last 24 hours
+        signals = db.query(TradingSignal).filter(
+            TradingSignal.created_at >= datetime.utcnow() - timedelta(hours=24)
+        ).order_by(TradingSignal.created_at.desc()).all()
+        
+        signal_data = []
+        for signal in signals:
+            signal_data.append({
+                "id": signal.signal_id,
+                "coin_symbol": signal.coin_symbol,
+                "signal_type": signal.signal_type,
+                "confidence": round(signal.confidence, 1),
+                "models_agreed": signal.models_agreed,
+                "total_models": signal.total_models,
+                "entry_price": signal.entry_price,
+                "current_price": signal.current_price,
+                "position_size_usdt": signal.position_size_usdt,
+                "status": signal.status,
+                "unrealized_pnl_usdt": round(signal.unrealized_pnl_usdt, 2),
+                "unrealized_pnl_percent": round(signal.unrealized_pnl_percent, 2),
+                "realized_pnl_usdt": round(signal.realized_pnl_usdt, 2),
+                "timestamp": signal.created_at.isoformat(),
+                "executed_at": signal.executed_at.isoformat() if signal.executed_at else None,
+                "execution_order_id": signal.execution_order_id,
+                "execution_error": signal.execution_error
+            })
+        
+        # Calculate summary statistics
+        total_signals = len(signal_data)
+        executed_signals = len([s for s in signal_data if s["status"] == "executed"])
+        pending_signals = len([s for s in signal_data if s["status"] == "pending"])
+        failed_signals = len([s for s in signal_data if s["status"] == "failed"])
+        
+        total_pnl = sum(s["unrealized_pnl_usdt"] for s in signal_data if s["status"] == "executed")
+        
+        return {
+            "success": True,
+            "signals": signal_data,
+            "summary": {
+                "total_signals": total_signals,
+                "executed_signals": executed_signals,
+                "pending_signals": pending_signals,
+                "failed_signals": failed_signals,
+                "total_unrealized_pnl": round(total_pnl, 2),
+                "execution_rate": round((executed_signals / total_signals * 100), 1) if total_signals > 0 else 0
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error getting live signals: {e}")
+        return {
+            "success": False,
+            "signals": [],
+            "summary": {},
+            "error": str(e)
+        }
+
 @app.get("/signals")
 async def get_trading_signals(db: Session = Depends(get_db)):
     """Get autonomous trading signals from ML predictions with low thresholds"""
@@ -1093,9 +1156,15 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/deployment-test")
 async def deployment_test():
     return {
-        "message": "✅ Clean deployment with all endpoints!", 
+        "message": "✅ Automatic Trading Execution System Deployed!", 
         "timestamp": datetime.utcnow().isoformat(), 
-        "version": "v2.2",
+        "version": "v3.0",
+        "new_features": [
+            "Automatic signal execution",
+            "Real-time P&L tracking", 
+            "Signal management endpoints",
+            "Risk management controls"
+        ],
         "endpoints": [
             "/training-info", 
             "/trading/status", 
@@ -1105,6 +1174,12 @@ async def deployment_test():
             "/optimize/queue", 
             "/optimize/apply/{symbol}",
             "/signals",
+            "/signals/live",
+            "/signals/execute/{signal_id}",
+            "/signals/cancel/{signal_id}",
+            "/signals/statistics",
+            "/signals/engine/toggle",
+            "/signals/engine/status",
             "/debug/signals"
         ]
     }
@@ -1542,6 +1617,144 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
                 "volume": 0.0
             }
         }
+
+@app.post("/signals/execute/{signal_id}")
+async def execute_specific_signal(signal_id: str, db: Session = Depends(get_db)):
+    """Manually execute a specific signal"""
+    try:
+        signal = db.query(TradingSignal).filter(TradingSignal.signal_id == signal_id).first()
+        if not signal:
+            raise HTTPException(status_code=404, detail="Signal not found")
+        
+        if signal.status != 'pending':
+            raise HTTPException(status_code=400, detail=f"Signal is not pending (current status: {signal.status})")
+        
+        # Execute the signal
+        success = await signal_execution_engine.execute_signal(db, signal)
+        
+        if success:
+            return {"success": True, "message": f"Signal {signal_id} executed successfully"}
+        else:
+            return {"success": False, "message": f"Failed to execute signal {signal_id}"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error executing signal {signal_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/signals/cancel/{signal_id}")
+async def cancel_signal(signal_id: str, db: Session = Depends(get_db)):
+    """Cancel a pending signal"""
+    try:
+        signal = db.query(TradingSignal).filter(TradingSignal.signal_id == signal_id).first()
+        if not signal:
+            raise HTTPException(status_code=404, detail="Signal not found")
+        
+        if signal.status != 'pending':
+            raise HTTPException(status_code=400, detail=f"Cannot cancel signal with status: {signal.status}")
+        
+        signal.status = 'cancelled'
+        signal.execution_error = "Manually cancelled"
+        db.commit()
+        
+        return {"success": True, "message": f"Signal {signal_id} cancelled successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error cancelling signal {signal_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/signals/statistics")
+async def get_signal_statistics(db: Session = Depends(get_db)):
+    """Get comprehensive signal execution statistics"""
+    try:
+        # Get signals from the last 7 days
+        week_ago = datetime.utcnow() - timedelta(days=7)
+        signals = db.query(TradingSignal).filter(TradingSignal.created_at >= week_ago).all()
+        
+        # Calculate statistics
+        total_signals = len(signals)
+        status_breakdown = {}
+        total_pnl = 0
+        winning_signals = 0
+        losing_signals = 0
+        
+        for signal in signals:
+            status = signal.status
+            status_breakdown[status] = status_breakdown.get(status, 0) + 1
+            
+            if signal.status in ['executed', 'closed']:
+                pnl = signal.realized_pnl_usdt if signal.status == 'closed' else signal.unrealized_pnl_usdt
+                total_pnl += pnl
+                
+                if pnl > 0:
+                    winning_signals += 1
+                elif pnl < 0:
+                    losing_signals += 1
+        
+        executed_signals = status_breakdown.get('executed', 0) + status_breakdown.get('closed', 0)
+        win_rate = (winning_signals / executed_signals * 100) if executed_signals > 0 else 0
+        execution_rate = (executed_signals / total_signals * 100) if total_signals > 0 else 0
+        
+        # Get hourly signal generation rate
+        daily_signals = db.query(TradingSignal).filter(
+            TradingSignal.created_at >= datetime.utcnow() - timedelta(hours=24)
+        ).count()
+        signals_per_hour = daily_signals / 24
+        
+        return {
+            "total_signals_7d": total_signals,
+            "status_breakdown": status_breakdown,
+            "execution_rate": round(execution_rate, 1),
+            "win_rate": round(win_rate, 1),
+            "total_pnl_usdt": round(total_pnl, 2),
+            "winning_signals": winning_signals,
+            "losing_signals": losing_signals,
+            "signals_per_hour": round(signals_per_hour, 1),
+            "average_confidence": round(
+                sum(s.confidence for s in signals) / len(signals), 1
+            ) if signals else 0
+        }
+    
+    except Exception as e:
+        logger.error(f"Error getting signal statistics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/signals/engine/toggle")
+async def toggle_signal_engine(enabled: bool):
+    """Enable or disable the signal execution engine"""
+    try:
+        signal_execution_engine.enabled = enabled
+        status = "enabled" if enabled else "disabled"
+        logger.info(f"Signal execution engine {status}")
+        
+        return {
+            "success": True,
+            "message": f"Signal execution engine {status}",
+            "enabled": enabled
+        }
+    except Exception as e:
+        logger.error(f"Error toggling signal engine: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/signals/engine/status")
+async def get_signal_engine_status():
+    """Get current status of the signal execution engine"""
+    try:
+        return {
+            "enabled": signal_execution_engine.enabled,
+            "daily_trades_count": signal_execution_engine.daily_trades_count,
+            "daily_loss_usdt": signal_execution_engine.daily_loss_usdt,
+            "max_daily_trades": signal_execution_engine.max_daily_trades,
+            "max_daily_loss_usdt": signal_execution_engine.max_daily_loss_usdt,
+            "min_balance_required": signal_execution_engine.min_balance_required,
+            "current_balance": signal_execution_engine._get_available_balance()
+        }
+    except Exception as e:
+        logger.error(f"Error getting signal engine status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def live_signal_monitoring_task():
     """Continuously monitor for trading signals and execute trades"""

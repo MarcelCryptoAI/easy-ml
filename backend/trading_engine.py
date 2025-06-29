@@ -384,3 +384,101 @@ class TradingEngine:
                 })
                 
                 logger.info(f"Trade closed: {trade.coin_symbol} PnL: {trade.pnl:.2f}%")
+    
+    async def execute_signal_trade(self, coin_symbol: str, signal_side: str, confidence: float, strategy):
+        """Execute a trade based on a signal (called by SignalExecutionEngine)"""
+        try:
+            # Get current price
+            klines = self.bybit_client.get_klines(coin_symbol, limit=1)
+            if not klines:
+                logger.error(f"❌ No price data for {coin_symbol}")
+                return False
+            
+            current_price = float(klines[-1]["close"])
+            
+            # Check if we already have an open position for this symbol
+            current_positions = self.bybit_client.get_positions()
+            if self._has_open_position(coin_symbol, current_positions):
+                logger.info(f"⏭️ Skipping {coin_symbol} - already has open position")
+                return False
+            
+            # Calculate position size
+            position_size = self._calculate_position_size(current_price, strategy)
+            if position_size <= 0:
+                logger.warning(f"⚠️ Invalid position size for {coin_symbol}: {position_size}")
+                return False
+            
+            # Convert signal side to order side
+            side = "buy" if signal_side == "LONG" else "sell"
+            
+            # Calculate TP/SL prices
+            if side == "buy":
+                take_profit_price = current_price * (1 + strategy.take_profit_percentage / 100)
+                stop_loss_price = current_price * (1 - strategy.stop_loss_percentage / 100)
+            else:
+                take_profit_price = current_price * (1 - strategy.take_profit_percentage / 100)
+                stop_loss_price = current_price * (1 + strategy.stop_loss_percentage / 100)
+            
+            logger.info(f"🎯 SIGNAL TRADE: {coin_symbol} {side.upper()}")
+            logger.info(f"   💰 Price: ${current_price:.4f}")
+            logger.info(f"   📊 Confidence: {confidence:.1f}%")
+            logger.info(f"   📏 Size: {position_size:.6f} ({strategy.leverage}x leverage)")
+            logger.info(f"   🎯 TP: ${take_profit_price:.4f} | SL: ${stop_loss_price:.4f}")
+            
+            # Execute the order
+            order_result = self.bybit_client.place_order(
+                symbol=coin_symbol,
+                side=side,
+                qty=position_size,
+                leverage=strategy.leverage,
+                take_profit=take_profit_price,
+                stop_loss=stop_loss_price
+            )
+            
+            if order_result and order_result.get("success"):
+                # Create trade record
+                db = SessionLocal()
+                trade = Trade(
+                    coin_symbol=coin_symbol,
+                    order_id=order_result.get("order_id", ""),
+                    side=side,
+                    size=position_size,
+                    price=current_price,
+                    leverage=strategy.leverage,
+                    take_profit=take_profit_price,
+                    stop_loss=stop_loss_price,
+                    status="open",
+                    ml_confidence=confidence,
+                    strategy_params={
+                        "signal_execution": True,
+                        "take_profit_percentage": strategy.take_profit_percentage,
+                        "stop_loss_percentage": strategy.stop_loss_percentage,
+                        "leverage": strategy.leverage
+                    }
+                )
+                
+                db.add(trade)
+                db.commit()
+                db.close()
+                
+                # Broadcast update
+                await self.websocket_manager.broadcast_trade_update({
+                    "action": "signal_trade_opened",
+                    "symbol": coin_symbol,
+                    "side": side,
+                    "price": current_price,
+                    "confidence": confidence,
+                    "order_id": order_result.get("order_id", "")
+                })
+                
+                logger.info(f"✅ SIGNAL TRADE EXECUTED: {coin_symbol} {side.upper()} | Order ID: {order_result.get('order_id', 'Unknown')}")
+                return True
+            
+            else:
+                error_msg = order_result.get("error", "Unknown error") if order_result else "No response from exchange"
+                logger.error(f"❌ SIGNAL TRADE FAILED: {coin_symbol} - {error_msg}")
+                return False
+        
+        except Exception as e:
+            logger.error(f"❌ Error executing signal trade for {coin_symbol}: {e}")
+            return False
