@@ -463,7 +463,6 @@ interface ModernTradingDashboardProps {
 export const ModernTradingDashboard: React.FC<ModernTradingDashboardProps> = ({ onNavigate }) => {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showNavigation, setShowNavigation] = useState(false);
 
   // Data fetching
   const { data: tradingStats, refetch: refetchStats } = useQuery({
@@ -545,85 +544,6 @@ export const ModernTradingDashboard: React.FC<ModernTradingDashboardProps> = ({ 
           <div style={{ ...styles.orb, ...styles.orb3 }} />
         </div>
 
-        {/* Navigation Menu */}
-        {showNavigation && (
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '2rem',
-            transform: 'translateY(-50%)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
-            zIndex: 1000,
-          }}>
-            {[
-              { label: '🎮 Trading', index: 1 },
-              { label: '📊 ML Progress', index: 2 },
-              { label: '🔧 Training', index: 3 },
-              { label: '📡 Signals', index: 4 },
-              { label: '⚙️ Strategy', index: 5 },
-              { label: '🤖 AI Optimizer', index: 6 },
-              { label: '📈 Analysis', index: 7 },
-            ].map((item) => (
-              <button
-                key={item.index}
-                onClick={() => onNavigate?.(item.index)}
-                style={{
-                  padding: '1rem',
-                  background: 'rgba(15, 23, 42, 0.9)',
-                  border: '1px solid rgba(148, 163, 184, 0.3)',
-                  borderRadius: '12px',
-                  color: '#f1f5f9',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(20px)',
-                  transition: 'all 0.2s ease',
-                  minWidth: '140px',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
-                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(15, 23, 42, 0.9)';
-                  e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Navigation Toggle */}
-        <button
-          style={{
-            position: 'fixed',
-            top: '2rem',
-            left: '2rem',
-            width: '60px',
-            height: '60px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-            border: 'none',
-            color: '#fff',
-            fontSize: '1.5rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 10px 30px rgba(59, 130, 246, 0.3)',
-            transition: 'transform 0.2s ease',
-            zIndex: 1000,
-          }}
-          onClick={() => setShowNavigation(!showNavigation)}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          ☰
-        </button>
 
         {/* Refresh Button */}
         <button
@@ -641,8 +561,8 @@ export const ModernTradingDashboard: React.FC<ModernTradingDashboardProps> = ({ 
         <div style={styles.content}>
           {/* Header */}
           <div style={styles.header}>
-            <h1 style={styles.title}>Neural Trading Command</h1>
-            <p style={styles.subtitle}>AI-Powered Real-Time Analytics Dashboard</p>
+            <h1 style={styles.title}>A.R.I.E. Neural Trading</h1>
+            <p style={styles.subtitle}>AI-Powered Autonomous Machine Learning Bot</p>
           </div>
 
           {/* Key Metrics */}

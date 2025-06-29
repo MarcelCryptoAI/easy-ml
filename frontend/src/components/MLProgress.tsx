@@ -117,13 +117,28 @@ export const MLProgress: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">ML Training Progress</Typography>
-        <IconButton onClick={() => refetch()} disabled={isLoading}>
-          <Refresh />
-        </IconButton>
-      </Box>
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-blue-900/20" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
+      </div>
+
+      <div className="relative z-10 p-8">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500">
+            📊 ML Training Progress
+          </h1>
+          <button
+            onClick={() => refetch()}
+            disabled={isLoading}
+            className="px-6 py-3 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 backdrop-blur-xl border border-cyan-500/50 rounded-xl text-cyan-400 hover:bg-cyan-500/30 transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] disabled:opacity-50"
+          >
+            <Refresh className="w-6 h-6" />
+          </button>
+        </div>
 
       {/* Enhanced Statistics */}
       <Grid container spacing={3} mb={3}>

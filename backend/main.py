@@ -1328,10 +1328,12 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
         # Get total active coins/strategies
         active_coins_count = db.query(Coin).filter(Coin.is_active == True).count()
         
-        # Get total models with predictions
-        models_with_predictions = db.query(MLPrediction.model_type).distinct().count()
+        # For models running - we have 10 model types x active coins
+        # This represents the total model instances that SHOULD be running
+        model_types = 10  # lstm, random_forest, svm, neural_network, xgboost, lightgbm, catboost, transformer, gru, cnn_1d
+        total_models_running = active_coins_count * model_types  # Each coin uses all 10 models
         
-        # Get total predictions count
+        # Get actual predictions data
         total_predictions = db.query(MLPrediction).count()
         
         # Get recent predictions (last 24 hours) for "predictions per hour"
@@ -1342,12 +1344,34 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
         
         predictions_per_hour = recent_predictions / 24 if recent_predictions > 0 else 0
         
+        # Get 24h performance data
+        trades_24h = db.query(Trade).filter(
+            Trade.opened_at >= datetime.utcnow() - timedelta(hours=24)
+        ).all()
+        
+        pnl_24h = sum(t.pnl for t in trades_24h if t.status == "closed")
+        trades_today = len(trades_24h)
+        
+        # Calculate 24h win rate
+        winning_trades_24h = [t for t in trades_24h if t.status == "closed" and t.pnl > 0]
+        closed_trades_24h = [t for t in trades_24h if t.status == "closed"]
+        win_rate_24h = (len(winning_trades_24h) / len(closed_trades_24h) * 100) if closed_trades_24h else 0
+        
+        # Calculate 24h volume
+        volume_24h = sum(abs(t.size * t.price) for t in trades_24h) if trades_24h else 0
+        
         return {
             "active_strategies": active_coins_count,
-            "models_running": models_with_predictions,
+            "models_running": total_models_running,
             "predictions_per_hour": round(predictions_per_hour, 0),
             "total_predictions": total_predictions,
-            "system_status": "LIVE"
+            "system_status": "LIVE",
+            "performance_24h": {
+                "pnl": round(pnl_24h, 2),
+                "trades": trades_today,
+                "win_rate": round(win_rate_24h, 1),
+                "volume": round(volume_24h, 2)
+            }
         }
     except Exception as e:
         logger.error(f"Error getting dashboard stats: {e}")
@@ -1356,7 +1380,13 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
             "models_running": 0,
             "predictions_per_hour": 0,
             "total_predictions": 0,
-            "system_status": "OFFLINE"
+            "system_status": "OFFLINE",
+            "performance_24h": {
+                "pnl": 0.0,
+                "trades": 0,
+                "win_rate": 0.0,
+                "volume": 0.0
+            }
         }
 
 async def live_signal_monitoring_task():

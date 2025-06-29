@@ -214,9 +214,9 @@ export const AdvancedTradingDashboard: React.FC = () => {
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 mb-2">
-              Trading Neural Command Center
+              A.R.I.E. Neural Trading
             </h1>
-            <p className="text-gray-400 text-lg">Real-time AI-Powered Trading Analytics</p>
+            <p className="text-gray-400 text-lg">AI-Powered Autonomous Machine Learning Bot</p>
           </div>
           <div className="flex gap-4">
             <button
@@ -639,22 +639,22 @@ export const AdvancedTradingDashboard: React.FC = () => {
               </h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Total PnL</span>
-                  <span className={`font-bold ${(tradingStats?.total_pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {formatCurrency(tradingStats?.total_pnl || 0)}
+                  <span className="text-gray-400">Daily PnL</span>
+                  <span className={`font-bold ${(dashboardStats?.performance_24h?.pnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {formatCurrency(dashboardStats?.performance_24h?.pnl || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Total Trades</span>
-                  <span className="text-violet-400 font-bold">{tradingStats?.total_trades || 0}</span>
+                  <span className="text-gray-400">Trades Today</span>
+                  <span className="text-violet-400 font-bold">{dashboardStats?.performance_24h?.trades || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Win Rate</span>
-                  <span className="text-green-400 font-bold">{(tradingStats?.win_rate || 0).toFixed(1)}%</span>
+                  <span className="text-gray-400">Win Rate 24H</span>
+                  <span className="text-green-400 font-bold">{(dashboardStats?.performance_24h?.win_rate || 0).toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Total Volume</span>
-                  <span className="text-violet-400 font-bold">{formatCurrency(tradingStats?.total_volume || 0)}</span>
+                  <span className="text-gray-400">Volume 24H</span>
+                  <span className="text-violet-400 font-bold">{formatCurrency(dashboardStats?.performance_24h?.volume || 0)}</span>
                 </div>
               </div>
             </div>
