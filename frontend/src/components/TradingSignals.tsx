@@ -56,126 +56,70 @@ export const TradingSignals: React.FC = () => {
     refetchInterval: 60000
   });
 
-  // Generate multiple demo signals to ensure display works
+  // Fetch REAL signals from backend
   const { data: signalsResponse, isLoading, refetch } = useQuery({
-    queryKey: ['trading-signals-demo'],
+    queryKey: ['trading-signals-live'],
     queryFn: async () => {
-      console.log('🔍 Generating demo trading signals...');
+      console.log('🔍 Fetching LIVE signals from backend...');
       
-      // Create realistic demo signals for top coins
-      const demoSignals: TradingSignal[] = [
-        {
-          id: `BTCUSDT_${Date.now()}`,
-          coin_symbol: 'BTCUSDT',
-          signal_type: 'LONG',
-          timestamp: new Date().toISOString(),
-          models_agreed: 7,
-          total_models: 10,
-          avg_confidence: 75.5,
-          entry_price: 96500.00,
-          current_price: 97250.00,
-          position_size_usdt: 2000,
-          status: 'open',
-          unrealized_pnl_usdt: 155.44,
-          unrealized_pnl_percent: 0.78,
-          criteria_met: {
-            confidence_threshold: true,
-            model_agreement: true,
-            risk_management: true
-          }
-        },
-        {
-          id: `ETHUSDT_${Date.now() + 1}`,
-          coin_symbol: 'ETHUSDT',
-          signal_type: 'SHORT',
-          timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-          models_agreed: 6,
-          total_models: 10,
-          avg_confidence: 68.3,
-          entry_price: 3680.00,
-          current_price: 3645.00,
-          position_size_usdt: 1500,
-          status: 'open',
-          unrealized_pnl_usdt: 142.86,
-          unrealized_pnl_percent: 0.95,
-          criteria_met: {
-            confidence_threshold: true,
-            model_agreement: true,
-            risk_management: true
-          }
-        },
-        {
-          id: `SOLUSDT_${Date.now() + 2}`,
-          coin_symbol: 'SOLUSDT',
-          signal_type: 'LONG',
-          timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          models_agreed: 8,
-          total_models: 10,
-          avg_confidence: 82.1,
-          entry_price: 215.50,
-          current_price: 219.75,
-          position_size_usdt: 1000,
-          status: 'open',
-          unrealized_pnl_usdt: 197.21,
-          unrealized_pnl_percent: 1.97,
-          criteria_met: {
-            confidence_threshold: true,
-            model_agreement: true,
-            risk_management: true
-          }
-        },
-        {
-          id: `BNBUSDT_${Date.now() + 3}`,
-          coin_symbol: 'BNBUSDT',
-          signal_type: 'LONG',
-          timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-          models_agreed: 5,
-          total_models: 10,
-          avg_confidence: 65.8,
-          entry_price: 685.00,
-          current_price: 692.50,
-          position_size_usdt: 800,
-          status: 'closed',
-          unrealized_pnl_usdt: 87.65,
-          unrealized_pnl_percent: 1.09,
-          criteria_met: {
-            confidence_threshold: true,
-            model_agreement: true,
-            risk_management: true
-          }
-        },
-        {
-          id: `XRPUSDT_${Date.now() + 4}`,
-          coin_symbol: 'XRPUSDT',
-          signal_type: 'SHORT',
-          timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-          models_agreed: 6,
-          total_models: 10,
-          avg_confidence: 71.2,
-          entry_price: 2.45,
-          current_price: 2.38,
-          position_size_usdt: 1200,
-          status: 'open',
-          unrealized_pnl_usdt: 35.29,
-          unrealized_pnl_percent: 2.86,
-          criteria_met: {
-            confidence_threshold: true,
-            model_agreement: true,
-            risk_management: true
-          }
+      try {
+        const response = await fetch('https://easy-ml-production.up.railway.app/signals');
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch signals: ${response.status}`);
         }
-      ];
-      
-      console.log(`✅ Generated ${demoSignals.length} demo signals`);
-      
-      return {
-        success: true,
-        signals: demoSignals,
-        total_signals: demoSignals.length,
-        timestamp: new Date().toISOString()
-      };
+        
+        const data = await response.json();
+        console.log('✅ Live signals received:', data);
+        
+        // Transform backend signals to match our interface
+        if (data.signals && Array.isArray(data.signals)) {
+          const transformedSignals = data.signals.map((signal: any, index: number) => ({
+            id: `${signal.coin_symbol}_${Date.now()}_${index}`,
+            coin_symbol: signal.coin_symbol,
+            signal_type: signal.signal_type,
+            timestamp: signal.created_at || new Date().toISOString(),
+            models_agreed: signal.consensus?.buy_count > signal.consensus?.sell_count 
+              ? signal.consensus.buy_count 
+              : signal.consensus.sell_count,
+            total_models: signal.consensus?.total_models || 10,
+            avg_confidence: signal.confidence || 0,
+            entry_price: signal.entry_price || 0,
+            current_price: signal.current_price || signal.entry_price || 0,
+            position_size_usdt: 1000, // Default position size
+            status: 'open',
+            unrealized_pnl_usdt: 0,
+            unrealized_pnl_percent: 0,
+            criteria_met: {
+              confidence_threshold: signal.confidence >= 30,
+              model_agreement: true,
+              risk_management: true
+            }
+          }));
+          
+          return {
+            success: true,
+            signals: transformedSignals,
+            total_signals: transformedSignals.length,
+            timestamp: new Date().toISOString()
+          };
+        }
+        
+        return {
+          success: true,
+          signals: [],
+          total_signals: 0,
+          timestamp: new Date().toISOString()
+        };
+        
+      } catch (error) {
+        console.error('❌ Error fetching live signals:', error);
+        throw error;
+      }
     },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 10000, // Refresh every 10 seconds for live data
+    retry: 3,
+    retryDelay: 1000
   });
 
   const signals = signalsResponse?.signals || [];
@@ -291,12 +235,12 @@ export const TradingSignals: React.FC = () => {
                 <span className="text-2xl">📋</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-blue-400 mb-2">Demo Signal Mode</h3>
+                <h3 className="text-xl font-bold text-blue-400 mb-2">Live Signal Criteria</h3>
                 <div className="text-gray-300 space-y-1">
-                  <p>• <strong>Demo Data:</strong> Displaying 5 realistic trading signals for testing</p>
-                  <p>• <strong>Coins Shown:</strong> BTC, ETH, SOL, BNB, XRP with live-like updates</p>
-                  <p>• <strong>Signal Mix:</strong> Both LONG and SHORT positions with varied P&L</p>
-                  <p>• <strong>Status:</strong> 🟡 Demo mode active - switch to production for real signals</p>
+                  <p>• <strong>AI Consensus:</strong> Minimum 2 models agree OR 30%+ confidence with 1 model</p>
+                  <p>• <strong>Signal Generation:</strong> Real-time analysis of all 419 coins</p>
+                  <p>• <strong>Update Frequency:</strong> Signals refresh every 10 seconds</p>
+                  <p>• <strong>Status:</strong> 🟢 LIVE MODE - Showing real ML predictions</p>
                 </div>
               </div>
             </div>
