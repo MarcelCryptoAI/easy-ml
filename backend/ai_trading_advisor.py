@@ -40,7 +40,7 @@ class AITradingAdvisor:
             predictions = db.query(MLPrediction).filter(
                 MLPrediction.coin_symbol == coin_symbol,
                 MLPrediction.created_at > datetime.utcnow() - timedelta(hours=24)
-            ).order_by(MLPrediction.created_at.desc()).all()
+            ).order_by(MLPrediction.created_at.desc()).limit(100).all()
             
             if not predictions:
                 return {
@@ -82,10 +82,11 @@ class AITradingAdvisor:
             avg_confidence = total_confidence / total_models if total_models > 0 else 0
             
             # Determine recommendation based on consensus
-            if buy_votes >= 6:  # 60% consensus for LONG
+            # Lower threshold to 5 models (50%) for more signals
+            if buy_votes >= 5:  # 50% consensus for LONG
                 recommendation = "LONG"
                 confidence = (buy_votes / total_models) * (avg_confidence / 100)
-            elif sell_votes >= 6:  # 60% consensus for SHORT
+            elif sell_votes >= 5:  # 50% consensus for SHORT
                 recommendation = "SHORT"
                 confidence = (sell_votes / total_models) * (avg_confidence / 100)
             else:
@@ -263,8 +264,8 @@ class AITradingAdvisor:
             for coin in coins:
                 recommendation = self.get_autonomous_recommendation(db, coin.symbol)
                 
-                # Only include high confidence signals
-                if recommendation["confidence"] >= 75.0 and recommendation["recommendation"] != "HOLD":
+                # Lower confidence threshold to get more signals
+                if recommendation["confidence"] >= 50.0 and recommendation["recommendation"] != "HOLD":
                     signals.append({
                         "coin_symbol": coin.symbol,
                         "signal": recommendation["recommendation"],

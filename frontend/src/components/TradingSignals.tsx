@@ -172,8 +172,8 @@ export const TradingSignals: React.FC = () => {
               <div>
                 <h3 className="text-xl font-bold text-blue-400 mb-2">Live Signal Criteria</h3>
                 <div className="text-gray-300 space-y-1">
-                  <p>• <strong>AI Consensus:</strong> Weighted model confidence ≥ 75% + decision margin ≥ 0.3</p>
-                  <p>• <strong>Model Agreement:</strong> Multiple models must agree on trade direction</p>
+                  <p>• <strong>AI Consensus:</strong> Weighted model confidence ≥ 50% + decision margin ≥ 0.2</p>
+                  <p>• <strong>Model Agreement:</strong> At least 5 models must agree on trade direction</p>
                   <p>• <strong>Risk Management:</strong> Position sizing and stop-loss parameters validated</p>
                   <p>• <strong>Live Status:</strong> 🟢 System continuously monitors and executes qualifying signals</p>
                 </div>

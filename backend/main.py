@@ -908,8 +908,8 @@ async def get_trading_signals(db: Session = Depends(get_db)):
                 "unrealized_pnl_usdt": 0.0,
                 "unrealized_pnl_percent": 0.0,
                 "criteria_met": {
-                    "confidence_threshold": signal['confidence'] >= 75.0,
-                    "model_agreement": signal['models_consensus'].get('buy', 0) >= 6 or signal['models_consensus'].get('sell', 0) >= 6,
+                    "confidence_threshold": signal['confidence'] >= 50.0,
+                    "model_agreement": signal['models_consensus'].get('buy', 0) >= 5 or signal['models_consensus'].get('sell', 0) >= 5,
                     "risk_management": True
                 }
             })
@@ -922,8 +922,8 @@ async def get_trading_signals(db: Session = Depends(get_db)):
             "total_signals": len(formatted_signals),
             "timestamp": datetime.utcnow().isoformat(),
             "criteria": {
-                "min_confidence": 75.0,
-                "min_model_agreement": 6,
+                "min_confidence": 50.0,
+                "min_model_agreement": 5,
                 "risk_management_enabled": True
             }
         }
@@ -1448,9 +1448,9 @@ async def live_signal_monitoring_task():
                     max_confidence = max(long_confidence, short_confidence)
                     decision_margin = abs(long_confidence - short_confidence)
                     
-                    # Signal criteria: confidence >= 75% AND margin >= 0.3
-                    signal_threshold = 0.75
-                    margin_threshold = 0.3
+                    # Signal criteria: confidence >= 50% AND margin >= 0.2
+                    signal_threshold = 0.50
+                    margin_threshold = 0.2
                     
                     if max_confidence >= signal_threshold and decision_margin >= margin_threshold:
                         signals_generated += 1

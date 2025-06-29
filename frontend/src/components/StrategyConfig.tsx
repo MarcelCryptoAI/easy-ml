@@ -298,13 +298,25 @@ export const StrategyConfig: React.FC = () => {
         </Box>
       </Box>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        <strong>🚀 LIVE TRADING CRITERIA:</strong> The system generates trading signals when coin strategies meet these requirements:
-        <br />• <strong>Signal Generation:</strong> AI weighted model consensus ≥ 75% confidence + decision margin ≥ 0.3
-        <br />• <strong>Trade Execution:</strong> Signal must match strategy settings (leverage, position size, TP/SL levels)
-        <br />• <strong>Risk Management:</strong> Automatic position sizing based on account balance and configured percentages
-        <br />• <strong>Live Status:</strong> 🟢 System continuously monitors and executes trades when criteria are met
-      </Alert>
+      <div className="relative mb-6">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-2xl blur-xl" />
+        <div className="relative bg-black/50 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-xl flex items-center justify-center">
+              <span className="text-2xl">🚀</span>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-blue-400 mb-2">LIVE TRADING CRITERIA</h3>
+              <div className="text-gray-300 space-y-1">
+                <p>• <strong>Signal Generation:</strong> AI weighted model consensus ≥ 50% confidence + decision margin ≥ 0.2</p>
+                <p>• <strong>Trade Execution:</strong> Signal must match strategy settings (leverage, position size, TP/SL levels)</p>
+                <p>• <strong>Risk Management:</strong> Automatic position sizing based on account balance and configured percentages</p>
+                <p>• <strong>Live Status:</strong> 🟢 System continuously monitors and executes trades when criteria are met</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <TableContainer component={Paper}>
         <Table>
