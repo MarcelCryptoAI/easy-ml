@@ -66,15 +66,19 @@ export const TradingSignals: React.FC = () => {
               'closed': 'closed'
             };
             
+            // Safely extract consensus data
+            const consensus = signal.consensus || {};
+            const buyCount = consensus.buy_count || 0;
+            const sellCount = consensus.sell_count || 0;
+            const totalModels = consensus.total_models || 10;
+            
             return {
               id: signal.id || `${signal.coin_symbol}_${Date.now()}_${index}`,
               coin_symbol: signal.coin_symbol,
               signal_type: signal.signal_type,
               timestamp: signal.created_at || new Date().toISOString(),
-              models_agreed: signal.consensus?.buy_count > signal.consensus?.sell_count 
-                ? signal.consensus.buy_count 
-                : signal.consensus.sell_count,
-              total_models: signal.consensus?.total_models || 10,
+              models_agreed: Math.max(buyCount, sellCount),
+              total_models: totalModels,
               avg_confidence: signal.confidence || 0,
               entry_price: signal.entry_price || 0,
               current_price: signal.current_price || signal.entry_price || 0,
@@ -83,8 +87,8 @@ export const TradingSignals: React.FC = () => {
               unrealized_pnl_usdt: signal.unrealized_pnl_usdt || 0,
               unrealized_pnl_percent: signal.unrealized_pnl_percent || 0,
               criteria_met: {
-                confidence_threshold: signal.confidence >= 30,
-                model_agreement: (signal.consensus?.buy_count || 0) >= 2 || (signal.consensus?.sell_count || 0) >= 2,
+                confidence_threshold: (signal.confidence || 0) >= 30,
+                model_agreement: buyCount >= 2 || sellCount >= 2,
                 risk_management: true
               }
             };
