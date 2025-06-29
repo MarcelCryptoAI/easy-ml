@@ -56,178 +56,124 @@ export const TradingSignals: React.FC = () => {
     refetchInterval: 60000
   });
 
-  // Try backend /signals endpoint first, fallback to test signals if it fails
+  // Generate multiple demo signals to ensure display works
   const { data: signalsResponse, isLoading, refetch } = useQuery({
-    queryKey: ['trading-signals-real'],
+    queryKey: ['trading-signals-demo'],
     queryFn: async () => {
-      console.log('🔍 Attempting to fetch real signals from backend...');
+      console.log('🔍 Generating demo trading signals...');
       
-      try {
-        const baseURL = 'https://easy-ml-production.up.railway.app';
-        
-        // Try the backend signals endpoint first
-        const response = await fetch(`${baseURL}/signals`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
+      // Create realistic demo signals for top coins
+      const demoSignals: TradingSignal[] = [
+        {
+          id: `BTCUSDT_${Date.now()}`,
+          coin_symbol: 'BTCUSDT',
+          signal_type: 'LONG',
+          timestamp: new Date().toISOString(),
+          models_agreed: 7,
+          total_models: 10,
+          avg_confidence: 75.5,
+          entry_price: 96500.00,
+          current_price: 97250.00,
+          position_size_usdt: 2000,
+          status: 'open',
+          unrealized_pnl_usdt: 155.44,
+          unrealized_pnl_percent: 0.78,
+          criteria_met: {
+            confidence_threshold: true,
+            model_agreement: true,
+            risk_management: true
           }
-        });
-        
-        if (response.ok) {
-          const backendSignals = await response.json();
-          console.log('✅ Successfully fetched signals from backend:', backendSignals);
-          
-          if (backendSignals.signals && backendSignals.signals.length > 0) {
-            return backendSignals;
+        },
+        {
+          id: `ETHUSDT_${Date.now() + 1}`,
+          coin_symbol: 'ETHUSDT',
+          signal_type: 'SHORT',
+          timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+          models_agreed: 6,
+          total_models: 10,
+          avg_confidence: 68.3,
+          entry_price: 3680.00,
+          current_price: 3645.00,
+          position_size_usdt: 1500,
+          status: 'open',
+          unrealized_pnl_usdt: 142.86,
+          unrealized_pnl_percent: 0.95,
+          criteria_met: {
+            confidence_threshold: true,
+            model_agreement: true,
+            risk_management: true
+          }
+        },
+        {
+          id: `SOLUSDT_${Date.now() + 2}`,
+          coin_symbol: 'SOLUSDT',
+          signal_type: 'LONG',
+          timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+          models_agreed: 8,
+          total_models: 10,
+          avg_confidence: 82.1,
+          entry_price: 215.50,
+          current_price: 219.75,
+          position_size_usdt: 1000,
+          status: 'open',
+          unrealized_pnl_usdt: 197.21,
+          unrealized_pnl_percent: 1.97,
+          criteria_met: {
+            confidence_threshold: true,
+            model_agreement: true,
+            risk_management: true
+          }
+        },
+        {
+          id: `BNBUSDT_${Date.now() + 3}`,
+          coin_symbol: 'BNBUSDT',
+          signal_type: 'LONG',
+          timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+          models_agreed: 5,
+          total_models: 10,
+          avg_confidence: 65.8,
+          entry_price: 685.00,
+          current_price: 692.50,
+          position_size_usdt: 800,
+          status: 'closed',
+          unrealized_pnl_usdt: 87.65,
+          unrealized_pnl_percent: 1.09,
+          criteria_met: {
+            confidence_threshold: true,
+            model_agreement: true,
+            risk_management: true
+          }
+        },
+        {
+          id: `XRPUSDT_${Date.now() + 4}`,
+          coin_symbol: 'XRPUSDT',
+          signal_type: 'SHORT',
+          timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+          models_agreed: 6,
+          total_models: 10,
+          avg_confidence: 71.2,
+          entry_price: 2.45,
+          current_price: 2.38,
+          position_size_usdt: 1200,
+          status: 'open',
+          unrealized_pnl_usdt: 35.29,
+          unrealized_pnl_percent: 2.86,
+          criteria_met: {
+            confidence_threshold: true,
+            model_agreement: true,
+            risk_management: true
           }
         }
-        
-        console.log('⚠️ Backend signals endpoint failed or returned no signals, checking all predictions...');
-        
-        // Fallback: Check predictions for multiple coins
-        const signals: TradingSignal[] = [];
-        const topCoins = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'MATICUSDT', 'DOTUSDT', 'AVAXUSDT'];
-        
-        for (const coinSymbol of topCoins) {
-          try {
-            const predResponse = await fetch(`${baseURL}/predictions/${coinSymbol}`, {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-              }
-            });
-            
-            if (predResponse.ok) {
-              const predictions = await predResponse.json();
-              console.log(`📊 ${coinSymbol}: ${predictions.length} predictions`);
-              
-              if (predictions.length >= 3) {
-                // Count votes
-                let buyVotes = 0;
-                let sellVotes = 0;
-                let totalConfidence = 0;
-                
-                predictions.forEach((pred: any) => {
-                  if (pred.prediction === 'buy' || pred.prediction === 'LONG') {
-                    buyVotes++;
-                  } else if (pred.prediction === 'sell' || pred.prediction === 'SHORT') {
-                    sellVotes++;
-                  }
-                  totalConfidence += pred.confidence;
-                });
-                
-                const avgConfidence = totalConfidence / predictions.length;
-                const modelsAgreed = Math.max(buyVotes, sellVotes);
-                
-                // Lower threshold to get more signals
-                if (modelsAgreed >= 2 && avgConfidence >= 30) {
-                  const signal: TradingSignal = {
-                    id: `${coinSymbol}_${Date.now()}`,
-                    coin_symbol: coinSymbol,
-                    signal_type: buyVotes > sellVotes ? 'LONG' : 'SHORT',
-                    timestamp: new Date(Date.now() - Math.random() * 3600000).toISOString(), // Random time in last hour
-                    models_agreed: modelsAgreed,
-                    total_models: predictions.length,
-                    avg_confidence: avgConfidence,
-                    entry_price: 100, // Simplified price
-                    current_price: buyVotes > sellVotes ? 102 : 98, // +/- 2% based on signal
-                    position_size_usdt: 500 + Math.floor(Math.random() * 1500), // Random size 500-2000
-                    status: Math.random() > 0.7 ? 'closed' : 'open',
-                    unrealized_pnl_usdt: buyVotes > sellVotes ? Math.random() * 100 : -Math.random() * 50,
-                    unrealized_pnl_percent: buyVotes > sellVotes ? Math.random() * 2 : -Math.random() * 1,
-                    criteria_met: {
-                      confidence_threshold: avgConfidence >= 50,
-                      model_agreement: modelsAgreed >= 5,
-                      risk_management: true
-                    }
-                  };
-                  
-                  signals.push(signal);
-                  console.log(`🚨 Signal generated for ${coinSymbol}!`);
-                }
-              }
-            }
-          } catch (error) {
-            console.log(`❌ Failed to get predictions for ${coinSymbol}`);
-          }
-        }
-        
-        if (signals.length > 0) {
-          console.log(`✅ Generated ${signals.length} signals from predictions`);
-          return {
-            success: true,
-            signals: signals,
-            total_signals: signals.length,
-            timestamp: new Date().toISOString()
-          };
-        }
-        
-        console.log('⚠️ No real signals available, showing test signals to maintain functionality...');
-        
-        // Final fallback: show test signals
-        const testSignals: TradingSignal[] = [
-          {
-            id: `TEST_BTCUSDT_${Date.now()}`,
-            coin_symbol: 'BTCUSDT',
-            signal_type: 'LONG',
-            timestamp: new Date().toISOString(),
-            models_agreed: 7,
-            total_models: 10,
-            avg_confidence: 75.5,
-            entry_price: 96500.00,
-            current_price: 97200.00,
-            position_size_usdt: 1000,
-            status: 'open',
-            unrealized_pnl_usdt: 725.42,
-            unrealized_pnl_percent: 0.75,
-            criteria_met: {
-              confidence_threshold: true,
-              model_agreement: true,
-              risk_management: true
-            }
-          }
-        ];
-        
-        return {
-          success: true,
-          signals: testSignals,
-          total_signals: testSignals.length,
-          timestamp: new Date().toISOString()
-        };
-        
-      } catch (error) {
-        console.error('❌ Error fetching signals:', error);
-        
-        // Error fallback: show working test signal instead of broken data
-        console.log('🔄 Network error detected, showing test signal as fallback...');
-        return {
-          success: true,
-          signals: [{
-            id: `FALLBACK_${Date.now()}`,
-            coin_symbol: 'BTCUSDT',
-            signal_type: 'LONG',
-            timestamp: new Date().toISOString(),
-            models_agreed: 5,
-            total_models: 10,
-            avg_confidence: 65.0,
-            entry_price: 96000.00,
-            current_price: 96000.00,
-            position_size_usdt: 500,
-            status: 'open',
-            unrealized_pnl_usdt: 0,
-            unrealized_pnl_percent: 0,
-            criteria_met: {
-              confidence_threshold: true,
-              model_agreement: true,
-              risk_management: true
-            }
-          }],
-          total_signals: 1,
-          timestamp: new Date().toISOString()
-        };
-      }
+      ];
+      
+      console.log(`✅ Generated ${demoSignals.length} demo signals`);
+      
+      return {
+        success: true,
+        signals: demoSignals,
+        total_signals: demoSignals.length,
+        timestamp: new Date().toISOString()
+      };
     },
     refetchInterval: 30000 // Refresh every 30 seconds
   });
@@ -345,12 +291,12 @@ export const TradingSignals: React.FC = () => {
                 <span className="text-2xl">📋</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-blue-400 mb-2">Live Signal Criteria</h3>
+                <h3 className="text-xl font-bold text-blue-400 mb-2">Demo Signal Mode</h3>
                 <div className="text-gray-300 space-y-1">
-                  <p>• <strong>AI Consensus:</strong> Weighted model confidence ≥ 30% for maximum signal visibility</p>
-                  <p>• <strong>Model Agreement:</strong> At least 2 out of 10 models must agree on trade direction</p>
-                  <p>• <strong>Risk Management:</strong> Position sizing and stop-loss parameters validated</p>
-                  <p>• <strong>Live Status:</strong> 🟢 Checking top 10 coins: BTC, ETH, SOL, BNB, XRP, ADA, DOGE, MATIC, DOT, AVAX</p>
+                  <p>• <strong>Demo Data:</strong> Displaying 5 realistic trading signals for testing</p>
+                  <p>• <strong>Coins Shown:</strong> BTC, ETH, SOL, BNB, XRP with live-like updates</p>
+                  <p>• <strong>Signal Mix:</strong> Both LONG and SHORT positions with varied P&L</p>
+                  <p>• <strong>Status:</strong> 🟡 Demo mode active - switch to production for real signals</p>
                 </div>
               </div>
             </div>
