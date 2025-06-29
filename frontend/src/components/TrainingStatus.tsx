@@ -1,36 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Paper,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  LinearProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  Alert,
-  IconButton,
-  Button,
-  CircularProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControlLabel,
-  Switch,
-  TextField,
-  Slider
-} from '@mui/material';
-import { Refresh, ExpandMore, PlayArrow, Pause, Settings } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradingApi } from '../utils/api';
 import toast from 'react-hot-toast';
@@ -203,318 +171,365 @@ export const TrainingStatus: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">🤖 ML Training Status</Typography>
-        <Box display="flex" gap={1}>
-          <Button
-            variant="outlined"
-            color={autoRefresh ? 'success' : 'primary'}
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            startIcon={autoRefresh ? <Pause /> : <PlayArrow />}
-          >
-            {autoRefresh ? 'Auto' : 'Manual'}
-          </Button>
-          <IconButton onClick={() => { refetchTraining(); refetchStats(); }}>
-            <Refresh />
-          </IconButton>
-        </Box>
-      </Box>
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-blue-900/20" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
+      </div>
 
-      {/* Overall Progress Overview */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h5" gutterBottom color="primary">
-                🚀 Overall Training Progress: All 5020 Models
-              </Typography>
-              {trainingSession && (
-                <>
-                  <Box mb={3}>
-                    <Typography variant="h6" color="textSecondary" gutterBottom>
-                      System Progress: {trainingSession.overall_progress}% Complete
-                    </Typography>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={trainingSession.overall_progress} 
-                      sx={{ 
-                        height: 20, 
-                        borderRadius: 10,
-                        backgroundColor: '#f0f0f0',
-                        '& .MuiLinearProgress-bar': {
-                          borderRadius: 10,
-                          background: 'linear-gradient(45deg, #4caf50, #8bc34a)'
-                        }
-                      }}
-                    />
-                    <Typography variant="body1" sx={{ mt: 1 }}>
-                      <strong>{trainingSession.completed_items}</strong> of <strong>{trainingSession.total_queue_items}</strong> models trained
-                      ({trainingSession.remaining_models} remaining)
-                    </Typography>
-                  </Box>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <div className="relative z-10 p-8">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-blue-500 to-cyan-500">
+            🤖 ML Training Command Center
+          </h1>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className={`px-4 py-2 rounded-xl backdrop-blur-xl border transition-all duration-300 ${
+                autoRefresh 
+                  ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/50 text-green-400' 
+                  : 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border-blue-500/50 text-blue-400'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span>{autoRefresh ? '⏸️' : '▶️'}</span>
+                <span>{autoRefresh ? 'Auto' : 'Manual'}</span>
+              </div>
+            </button>
+            <button
+              onClick={() => { refetchTraining(); refetchStats(); }}
+              className="p-3 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 backdrop-blur-xl border border-cyan-500/50 rounded-xl text-cyan-400 hover:bg-cyan-500/30 transition-all duration-300 hover:scale-105"
+            >
+              🔄
+            </button>
+          </div>
+        </div>
 
-      {/* Current Training Session Details */}
-      <Grid container spacing={3} mb={3}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Current Model Training
-              </Typography>
+        {/* Overall Progress */}
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl blur-xl" />
+          <div className="relative bg-black/50 backdrop-blur-xl border border-green-500/30 rounded-2xl p-6">
+            <h2 className="text-3xl font-bold text-green-400 mb-4">🚀 Overall Training Progress: All 4,190 Models</h2>
+            {trainingSession && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xl text-gray-300 mb-2">
+                    System Progress: {trainingSession.overall_progress}% Complete
+                  </p>
+                  <div className="relative">
+                    <div className="w-full bg-gray-700 rounded-full h-6">
+                      <div 
+                        className="bg-gradient-to-r from-green-400 to-emerald-500 h-6 rounded-full transition-all duration-500"
+                        style={{ width: `${trainingSession.overall_progress}%` }}
+                      ></div>
+                    </div>
+                    <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-white">
+                      {trainingSession.overall_progress}%
+                    </span>
+                  </div>
+                  <p className="text-lg text-gray-300 mt-2">
+                    <span className="font-bold text-white">{trainingSession.completed_items}</span> of <span className="font-bold text-white">{trainingSession.total_queue_items}</span> models trained
+                    ({trainingSession.remaining_models} remaining)
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Current Training & Controls */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Current Model Training */}
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-6">
+              <h3 className="text-2xl font-bold text-blue-400 mb-4">Current Model Training</h3>
               {trainingSession && (
-                <>
-                  <Box mb={2}>
-                    <Typography variant="body2" color="textSecondary">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-gray-400 mb-2">
                       Training: {trainingSession.current_coin} - {trainingSession.current_model}
-                    </Typography>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={trainingSession.progress} 
-                      sx={{ mt: 1, height: 8, borderRadius: 4 }}
-                    />
-                    <Typography variant="caption" color="textSecondary">
+                    </p>
+                    <div className="relative">
+                      <div className="w-full bg-gray-700 rounded-full h-3">
+                        <div 
+                          className="bg-gradient-to-r from-blue-400 to-purple-500 h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${trainingSession.progress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">
                       {trainingSession.progress}% - ETA: {formatTime(trainingSession.eta_seconds)}
-                    </Typography>
-                  </Box>
+                    </p>
+                  </div>
                   
-                  <Typography variant="caption" display="block" color="textSecondary">
-                    Session started: {new Date(trainingSession.session_start_time).toLocaleString()}
-                  </Typography>
-                  <Typography variant="caption" display="block" color="textSecondary">
-                    Full completion ETA: {formatEstimatedCompletion(trainingSession.estimated_completion_time)}
-                  </Typography>
-                </>
+                  <div className="space-y-1 text-sm text-gray-400">
+                    <p>Session started: {new Date(trainingSession.session_start_time).toLocaleString()}</p>
+                    <p>Full completion ETA: {formatEstimatedCompletion(trainingSession.estimated_completion_time)}</p>
+                  </div>
+                </div>
               )}
-            </CardContent>
-          </Card>
-        </Grid>
+            </div>
+          </div>
 
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Training Controls
-              </Typography>
-              <Box display="flex" gap={1} flexWrap="wrap">
-                <Button
-                  variant="contained"
-                  color="warning"
-                  startIcon={<Pause />}
+          {/* Training Controls */}
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-2xl blur-xl" />
+            <div className="relative bg-black/50 backdrop-blur-xl border border-orange-500/30 rounded-2xl p-6">
+              <h3 className="text-2xl font-bold text-orange-400 mb-4">Training Controls</h3>
+              <div className="flex flex-wrap gap-3">
+                <button
                   onClick={() => pauseTrainingMutation.mutate()}
                   disabled={pauseTrainingMutation.isPending}
+                  className="px-4 py-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-xl border border-yellow-500/50 rounded-xl text-yellow-400 hover:bg-yellow-500/30 transition-all duration-300 disabled:opacity-50"
                 >
-                  Pause Training
-                </Button>
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={<PlayArrow />}
+                  <div className="flex items-center gap-2">
+                    <span>⏸️</span>
+                    <span>Pause Training</span>
+                  </div>
+                </button>
+                <button
                   onClick={() => resumeTrainingMutation.mutate()}
                   disabled={resumeTrainingMutation.isPending}
+                  className="px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-xl border border-green-500/50 rounded-xl text-green-400 hover:bg-green-500/30 transition-all duration-300 disabled:opacity-50"
                 >
-                  Resume Training
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<Settings />}
+                  <div className="flex items-center gap-2">
+                    <span>▶️</span>
+                    <span>Resume Training</span>
+                  </div>
+                </button>
+                <button
                   onClick={() => setSettingsOpen(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl border border-purple-500/50 rounded-xl text-purple-400 hover:bg-purple-500/30 transition-all duration-300"
                 >
-                  Settings
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+                  <div className="flex items-center gap-2">
+                    <span>⚙️</span>
+                    <span>Settings</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      {/* Training Queue */}
-      <Accordion defaultExpanded>
-        <AccordionSummary expandIcon={<ExpandMore />}>
-          <Typography variant="h6">
-            Training Queue ({trainingQueue.length} items)
-          </Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          {queueLoading ? (
-            <Alert severity="info">Loading training queue...</Alert>
-          ) : trainingQueue.length > 0 ? (
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Position</TableCell>
-                    <TableCell>Coin</TableCell>
-                    <TableCell>Model Type</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Progress</TableCell>
-                    <TableCell>ETA</TableCell>
-                    <TableCell>Started</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {trainingQueue.map((item: any, index: number) => (
-                    <TableRow key={`${item.coin_symbol}-${item.model_type}`}>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight="bold">
-                          #{item.queue_position}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="subtitle2" fontWeight="bold">
-                          {item.coin_symbol}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={item.model_type}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={item.status}
-                          color={getStatusColor(item.status)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Box width={100}>
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={item.progress}
-                            sx={{ mb: 0.5 }}
-                          />
-                          <Typography variant="caption">
-                            {item.progress}%
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption">
-                          {item.estimated_time_remaining > 0 ? formatTime(item.estimated_time_remaining) : '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption">
-                          {item.started_at ? new Date(item.started_at).toLocaleTimeString() : '-'}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ) : (
-            <Alert severity="info">No training items in queue</Alert>
-          )}
-          
-          {trainingQueue.length > 20 && (
-            <Typography variant="caption" color="textSecondary" sx={{ mt: 2, display: 'block' }}>
-              Showing first 20 items. {trainingQueue.length - 20} more items in queue.
-            </Typography>
-          )}
-        </AccordionDetails>
-      </Accordion>
-
-      {/* Training Settings Dialog */}
-      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Training Settings</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={settings.autoRetrain}
-                  onChange={(e) => setSettings({...settings, autoRetrain: e.target.checked})}
-                />
-              }
-              label="Auto-retrain models"
-            />
+        {/* Training Queue */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-500/10 to-gray-500/10 rounded-2xl blur-xl" />
+          <div className="relative bg-black/50 backdrop-blur-xl border border-gray-500/30 rounded-2xl overflow-hidden">
+            <div className="p-6 border-b border-gray-700">
+              <h3 className="text-2xl font-bold text-gray-100">
+                Training Queue ({trainingQueue.length} items)
+              </h3>
+            </div>
             
-            <Box sx={{ mt: 3 }}>
-              <Typography gutterBottom>Training Interval (minutes)</Typography>
-              <Slider
-                value={settings.trainingInterval / 60}
-                onChange={(_, value) => setSettings({...settings, trainingInterval: (value as number) * 60})}
-                min={5}
-                max={720}
-                step={5}
-                marks={[
-                  { value: 5, label: '5m' },
-                  { value: 60, label: '1h' },
-                  { value: 360, label: '6h' },
-                  { value: 720, label: '12h' }
-                ]}
-                valueLabelDisplay="auto"
-                valueLabelFormat={(value) => `${value}m`}
-              />
-            </Box>
+            <div className="p-6">
+              {queueLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
+                  <p className="text-cyan-400">Loading training queue...</p>
+                </div>
+              ) : trainingQueue.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-white">
+                    <thead>
+                      <tr className="border-b border-gray-700">
+                        <th className="text-left p-4 text-cyan-400 font-bold">Position</th>
+                        <th className="text-left p-4 text-cyan-400 font-bold">Coin</th>
+                        <th className="text-left p-4 text-cyan-400 font-bold">Model Type</th>
+                        <th className="text-left p-4 text-cyan-400 font-bold">Status</th>
+                        <th className="text-left p-4 text-cyan-400 font-bold">Progress</th>
+                        <th className="text-left p-4 text-cyan-400 font-bold">Started</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {trainingQueue.slice(0, 20).map((item: any, index: number) => (
+                        <tr key={`${item.coin_symbol}-${item.model_type}`} className="border-b border-gray-800 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-transparent transition-all duration-300">
+                          <td className="p-4">
+                            <span className="font-bold text-white">#{item.queue_position}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className="font-bold text-white">{item.coin_symbol}</span>
+                          </td>
+                          <td className="p-4">
+                            <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/50">
+                              <span className="text-blue-400 font-semibold text-sm">{item.model_type}</span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className={`inline-flex items-center px-3 py-1 rounded-lg ${
+                              item.status === 'completed' ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50' :
+                              item.status === 'training' ? 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/50' :
+                              item.status === 'error' ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/50' :
+                              'bg-gradient-to-r from-gray-500/20 to-gray-500/20 border border-gray-500/50'
+                            }`}>
+                              <span className={`font-semibold text-sm ${
+                                item.status === 'completed' ? 'text-green-400' :
+                                item.status === 'training' ? 'text-yellow-400' :
+                                item.status === 'error' ? 'text-red-400' :
+                                'text-gray-400'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="w-24">
+                              <div className="w-full bg-gray-700 rounded-full h-2">
+                                <div 
+                                  className="bg-gradient-to-r from-green-400 to-emerald-500 h-2 rounded-full transition-all duration-500"
+                                  style={{ width: `${item.progress}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs text-gray-400 mt-1">{item.progress}%</span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-gray-400 text-sm">
+                            {item.started_at ? new Date(item.started_at).toLocaleTimeString() : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-3xl">📋</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-blue-400 mb-2">No Training Items</h3>
+                  <p className="text-gray-300">No training items currently in queue</p>
+                </div>
+              )}
+              
+              {trainingQueue.length > 20 && (
+                <p className="text-sm text-gray-400 mt-4">
+                  Showing first 20 items. {trainingQueue.length - 20} more items in queue.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
 
-            <Box sx={{ mt: 3 }}>
-              <Typography gutterBottom>Max Models per Coin</Typography>
-              <Slider
-                value={settings.maxModelsPerCoin}
-                onChange={(_, value) => setSettings({...settings, maxModelsPerCoin: value as number})}
-                min={1}
-                max={10}
-                step={1}
-                marks
-                valueLabelDisplay="auto"
-              />
-            </Box>
+        {/* Training Settings Modal */}
+        {settingsOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="relative max-w-md w-full">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl blur-xl" />
+              <div className="relative bg-black/90 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6">
+                <h3 className="text-2xl font-bold text-purple-400 mb-6">Training Settings</h3>
+                
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Auto-retrain models</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={settings.autoRetrain}
+                        onChange={(e) => setSettings({...settings, autoRetrain: e.target.checked})}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
 
-            <Box sx={{ mt: 3 }}>
-              <Typography gutterBottom>Training Batch Size</Typography>
-              <Slider
-                value={settings.batchSize}
-                onChange={(_, value) => setSettings({...settings, batchSize: value as number})}
-                min={1}
-                max={20}
-                step={1}
-                marks={[
-                  { value: 1, label: '1' },
-                  { value: 5, label: '5' },
-                  { value: 10, label: '10' },
-                  { value: 20, label: '20' }
-                ]}
-                valueLabelDisplay="auto"
-              />
-            </Box>
+                  <div>
+                    <label className="block text-gray-300 text-sm mb-2">Training Interval (minutes): {settings.trainingInterval / 60}</label>
+                    <input
+                      type="range"
+                      min="5"
+                      max="720"
+                      step="5"
+                      value={settings.trainingInterval / 60}
+                      onChange={(e) => setSettings({...settings, trainingInterval: Number(e.target.value) * 60})}
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                    />
+                  </div>
 
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={settings.enableNotifications}
-                  onChange={(e) => setSettings({...settings, enableNotifications: e.target.checked})}
-                />
-              }
-              label="Enable training notifications"
-              sx={{ mt: 2 }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSettingsOpen(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            onClick={() => {
-              toast.success('Settings saved successfully');
-              setSettingsOpen(false);
-            }}
-          >
-            Save Settings
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+                  <div>
+                    <label className="block text-gray-300 text-sm mb-2">Max Models per Coin: {settings.maxModelsPerCoin}</label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      step="1"
+                      value={settings.maxModelsPerCoin}
+                      onChange={(e) => setSettings({...settings, maxModelsPerCoin: Number(e.target.value)})}
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-300 text-sm mb-2">Training Batch Size: {settings.batchSize}</label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="20"
+                      step="1"
+                      value={settings.batchSize}
+                      onChange={(e) => setSettings({...settings, batchSize: Number(e.target.value)})}
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Enable notifications</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={settings.enableNotifications}
+                        onChange={(e) => setSettings({...settings, enableNotifications: e.target.checked})}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-8">
+                  <button
+                    onClick={() => setSettingsOpen(false)}
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-gray-500/20 to-gray-500/20 backdrop-blur-xl border border-gray-500/50 rounded-xl text-gray-400 hover:bg-gray-500/30 transition-all duration-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      toast.success('Settings saved successfully');
+                      setSettingsOpen(false);
+                    }}
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-xl border border-purple-500/50 rounded-xl text-purple-400 hover:bg-purple-500/30 transition-all duration-300"
+                  >
+                    Save Settings
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style jsx>{`
+        .slider::-webkit-slider-thumb {
+          appearance: none;
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: linear-gradient(45deg, #a855f7, #ec4899);
+          cursor: pointer;
+          border: 2px solid #1f2937;
+        }
+        .slider::-moz-range-thumb {
+          height: 20px;
+          width: 20px;
+          border-radius: 50%;
+          background: linear-gradient(45deg, #a855f7, #ec4899);
+          cursor: pointer;
+          border: 2px solid #1f2937;
+        }
+      `}</style>
+    </div>
   );
 };
