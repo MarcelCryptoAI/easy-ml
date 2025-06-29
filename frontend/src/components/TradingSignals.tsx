@@ -63,18 +63,31 @@ export const TradingSignals: React.FC = () => {
       const signals: TradingSignal[] = [];
       
       // Process each coin to check for signals
-      for (const coin of coins.slice(0, 50)) { // Process first 50 coins to avoid timeout
+      console.log('🔍 Processing', coins.length, 'coins for signals...');
+      
+      // Add BTCUSDT first to test
+      const testCoins = [
+        { symbol: 'BTCUSDT', name: 'BTC/USDT', id: 1 },
+        { symbol: 'ETHUSDT', name: 'ETH/USDT', id: 2 },
+        { symbol: 'ADAUSDT', name: 'ADA/USDT', id: 3 }
+      ];
+      
+      for (const coin of [...testCoins, ...coins.slice(0, 20)]) { // Process test coins + first 20
         try {
           // Get predictions for this coin
           const predResponse = await fetch(
             `${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://easy-ml-production.up.railway.app'}/predictions/${coin.symbol}`
           );
           
-          if (!predResponse.ok) continue;
+          if (!predResponse.ok) {
+            console.log(`❌ No predictions for ${coin.symbol}:`, predResponse.status);
+            continue;
+          }
           
           const predictions = await predResponse.json();
+          console.log(`📊 ${coin.symbol}: ${predictions.length} predictions`);
           
-          if (predictions.length < 5) continue; // Need at least 5 models
+          if (predictions.length < 3) continue; // Need at least 3 models
           
           // Count buy/sell votes
           let buyVotes = 0;
@@ -93,8 +106,11 @@ export const TradingSignals: React.FC = () => {
           const avgConfidence = totalConfidence / predictions.length;
           const modelsAgreed = Math.max(buyVotes, sellVotes);
           
-          // Check if we have a signal (5+ models agree and 50%+ confidence)
-          if (modelsAgreed >= 5 && avgConfidence >= 50) {
+          console.log(`📈 ${coin.symbol}: ${buyVotes} buy, ${sellVotes} sell, avg confidence: ${avgConfidence.toFixed(1)}%`);
+          
+          // Check if we have a signal (3+ models agree and 40%+ confidence) - lower threshold for more signals
+          if (modelsAgreed >= 3 && avgConfidence >= 40) {
+            console.log(`🚨 SIGNAL FOUND for ${coin.symbol}!`);
             const signal: TradingSignal = {
               id: `${coin.symbol}_${Date.now()}`,
               coin_symbol: coin.symbol,
@@ -122,6 +138,8 @@ export const TradingSignals: React.FC = () => {
           console.error(`Error processing ${coin.symbol}:`, error);
         }
       }
+      
+      console.log(`✅ Generated ${signals.length} signals total`);
       
       return {
         success: true,
@@ -249,8 +267,8 @@ export const TradingSignals: React.FC = () => {
               <div>
                 <h3 className="text-xl font-bold text-blue-400 mb-2">Live Signal Criteria</h3>
                 <div className="text-gray-300 space-y-1">
-                  <p>• <strong>AI Consensus:</strong> Weighted model confidence ≥ 50% + decision margin ≥ 0.2</p>
-                  <p>• <strong>Model Agreement:</strong> At least 5 models must agree on trade direction</p>
+                  <p>• <strong>AI Consensus:</strong> Weighted model confidence ≥ 40% + decision margin ≥ 0.2</p>
+                  <p>• <strong>Model Agreement:</strong> At least 3 models must agree on trade direction</p>
                   <p>• <strong>Risk Management:</strong> Position sizing and stop-loss parameters validated</p>
                   <p>• <strong>Live Status:</strong> 🟢 System continuously monitors and executes qualifying signals</p>
                 </div>
